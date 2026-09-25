@@ -157,6 +157,7 @@ input[type=number]::-webkit-inner-spin-button,input[type=number]::-webkit-outer-
 .score-edit .score-input{width:44px;text-align:center;font-weight:700;border-color:transparent;background:transparent}
 .score-edit .score-input:hover{border-color:var(--line)}
 .score-edit .score-input:focus{border-color:var(--accent);background:var(--card)}
+.team-rank{font-size:10px;font-weight:700;color:var(--sub);margin-right:5px;font-variant-numeric:tabular-nums}
 .vu-ring{display:inline-block;padding:1px 8px;border:2px solid var(--line);border-radius:6px;font-weight:700}
 .vu-ring.won{border-color:var(--yellow);color:var(--yellow)}
 .vu-ring.lost{border-color:var(--ink);color:var(--ink)}
@@ -413,7 +414,7 @@ input[type=number]::-webkit-inner-spin-button,input[type=number]::-webkit-outer-
 </div>
 
 <script>
-window.VU_PUBLIC={updated:"20260925100935",updatedText:"Sep 25, 2026 10:09 AM"};
+window.VU_PUBLIC={updated:"20260925102831",updatedText:"Sep 25, 2026 10:28 AM"};
 (function(){
   const realFetch=window.fetch.bind(window);
   const routes=[
@@ -586,10 +587,11 @@ let _standArchived=false, _schedArchived=false;   // viewing a past season (from
 function stripTeamLinks(box){ box.querySelectorAll('.team-link').forEach(el=>el.replaceWith(document.createTextNode(el.textContent))); }
 
 // ─── schedule ───────────────────────────────────────────────────────────────
-function renderSchedule(games){
+function renderSchedule(games,standings=_standings){
   // one table for the whole season so every week's columns line up; scoreboard style:
   // away team (right-aligned) | score | home team (left-aligned)
   const weeks=groupByWeek(games);
+  const rank=Object.fromEntries((standings||[]).map(s=>[s.team,s.place]));   // standings place, shown before each name
   let h=`<table class="grid-fixed sched"><colgroup><col style="width:70px"><col style="width:90px"><col style="width:120px">
       <col><col style="width:104px"><col></colgroup>
     <thead><tr><th>Date</th><th>Time</th><th>Location</th><th class="sched-away">Away</th><th class="sched-mid"></th><th>Home</th></tr></thead><tbody>`;
@@ -601,7 +603,8 @@ function renderSchedule(games){
       const result=played?(winner===VORTEX?' won':' lost'):'';
       const nameCell=t=>{
         const n=t===VORTEX?`<span class="vu-ring${result}">${esc(t)}</span>`:teamNameLink(t);
-        return winner===t&&t!==VORTEX?`<span class="winner">${n}</span>`:n;
+        const r=rank[t]?`<span class="team-rank">${rank[t]}</span>`:'';
+        return r+(winner===t&&t!==VORTEX?`<span class="winner">${n}</span>`:n);
       };
       let mid='<span class="muted">@</span>';
       if(played&&g.away_score!==null&&g.home_score!==null){
@@ -866,7 +869,9 @@ function renderEnter(games){
       const tag=row.querySelector('.played-tag');
       tag.textContent=p?'Played':'Unplayed'; tag.classList.toggle('done',p);
       if(!_schedArchived) renderSchedule(_games);
-      fetch('/api/standings').then(r=>r.json()).then(st=>{_standings=st; if(!_standArchived) renderStandings(st);});
+      fetch('/api/standings').then(r=>r.json()).then(st=>{
+        _standings=st; if(!_standArchived) renderStandings(st); if(!_schedArchived) renderSchedule(_games);
+      });
     });
   });
 }
@@ -2483,7 +2488,9 @@ document.getElementById('standings-season').addEventListener('change',async e=>{
 });
 document.getElementById('schedule-season').addEventListener('change',async e=>{
   const sid=e.target.value; _schedArchived=!!sid;
-  renderSchedule(sid?await fetch('/api/games?season_id='+sid).then(r=>r.json()):_games);
+  if(!sid) return renderSchedule(_games);
+  const [g,st]=await Promise.all([fetch('/api/games?season_id='+sid).then(r=>r.json()),fetch('/api/standings?season_id='+sid).then(r=>r.json())]);
+  renderSchedule(g,st);
 });
 
 // Fall 2026 -> Winter 2026 -> Spring 2027 -> Summer 2027 -> Fall 2027
