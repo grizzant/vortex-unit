@@ -164,6 +164,16 @@ input[type=number]::-webkit-inner-spin-button,input[type=number]::-webkit-outer-
 .team-link:hover{color:var(--accent)}
 .modal-overlay{position:fixed;inset:0;background:rgba(6,5,10,.72);display:flex;align-items:flex-start;justify-content:center;padding:40px 16px;z-index:100;overflow-y:auto}
 .modal-overlay.hidden{display:none}
+.ls-tiles{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:10px;margin-bottom:14px}
+.ls-tile{background:var(--bg);border:1px solid var(--line);border-radius:10px;padding:10px 14px}
+.ls-tile b{display:block;font-size:22px;font-variant-numeric:tabular-nums}
+.ls-tile span{font-size:11px;color:var(--sub);text-transform:uppercase;letter-spacing:.04em}
+.ls-next{border-top:1px solid var(--line);padding-top:12px;font-size:13px}
+.ls-odds{display:flex;gap:18px;flex-wrap:wrap;margin-top:8px}
+.ls-odds div{font-size:12px;color:var(--sub)}
+.ls-odds b{display:block;font-size:20px;color:var(--ink);font-variant-numeric:tabular-nums}
+.season-pick-row{display:flex;align-items:center;gap:8px;margin-bottom:14px;font-size:12px}
+.empty-state{color:var(--sub);font-size:13px;padding:18px 4px}
 .sync-bar{display:flex;align-items:center;gap:12px;flex-wrap:wrap;margin-bottom:14px;font-size:12px}
 .sync-paste{width:100%;min-height:110px;background:var(--bg);color:var(--ink);border:1px solid var(--line);border-radius:8px;padding:9px 11px;font-size:12px;font-family:inherit;resize:vertical}
 .sync-paste:focus{outline:none;border-color:var(--accent)}
@@ -203,11 +213,15 @@ input[type=number]::-webkit-inner-spin-button,input[type=number]::-webkit-outer-
 <main>
   <div id="tab-standings" class="tab-section">
     <p class="section-heading">Standings</p>
-    <div class="card"><div id="standings-container"></div></div>
+    <div class="card">
+      <div class="season-pick-row" id="standings-season-row" style="display:none"><label class="muted" for="standings-season">Season</label><select class="styled" id="standings-season"></select></div>
+      <div id="standings-container"></div></div>
   </div>
   <div id="tab-schedule" class="tab-section">
     <p class="section-heading">Schedule &amp; Results</p>
-    <div class="card"><div id="schedule-container"></div></div>
+    <div class="card">
+      <div class="season-pick-row" id="schedule-season-row" style="display:none"><label class="muted" for="schedule-season">Season</label><select class="styled" id="schedule-season"></select></div>
+      <div id="schedule-container"></div></div>
   </div>
   <div id="tab-enter" class="tab-section">
     <p class="section-heading">Enter Results</p>
@@ -215,7 +229,12 @@ input[type=number]::-webkit-inner-spin-button,input[type=number]::-webkit-outer-
       <div class="sync-bar">
         <button class="save-btn" id="sync-btn">Sync from league site</button>
         <span class="muted">Opens the league schedule &mdash; copy the whole page (&#8984;A, &#8984;C) and paste it in</span>
+        <span style="margin-left:auto;display:flex;align-items:center;gap:10px">
+          <span class="muted">Season: <b id="enter-season-name" style="color:var(--ink)"></b></span>
+          <button class="btn" id="new-season-btn">Start New Season</button>
+        </span>
       </div>
+      <div id="new-season-banner" class="se-note" style="display:none;margin:0 0 14px"></div>
       <div id="enter-container"></div>
     </div>
   </div>
@@ -236,6 +255,7 @@ input[type=number]::-webkit-inner-spin-button,input[type=number]::-webkit-outer-
       <div id="lineup-container" style="overflow-x:auto"></div>
       <div id="lineup-missing" style="margin-top:10px;overflow-x:auto"></div>
     </div>
+    <div class="card" id="lineup-strength"></div>
   </div>
   <div id="tab-auto-lineup" class="tab-section">
     <p class="section-heading">Auto Lineup</p>
@@ -345,6 +365,29 @@ input[type=number]::-webkit-inner-spin-button,input[type=number]::-webkit-outer-
   </div>
 </main>
 
+<div id="season-modal-overlay" class="modal-overlay hidden">
+  <div class="modal-box" style="max-width:520px">
+    <button class="modal-close" id="season-modal-close">&times;</button>
+    <div id="season-step1">
+      <p class="modal-title">Start a new season?</p>
+      <p class="modal-sub" id="season-step1-text"></p>
+      <ul class="muted" style="font-size:13px;line-height:1.6;padding-left:18px;margin:0 0 16px">
+        <li>The current standings and schedule/results move to the archive &mdash; pick them from the <b>Season</b> dropdown on Standings and Schedule.</li>
+        <li>Standings, Schedule and Enter Results start fresh for the new season.</li>
+        <li>Player stats get a new season, and Stat Entry is set to it. Past stats are kept.</li>
+      </ul>
+      <div style="display:flex;gap:8px"><button class="save-btn" id="season-yes">Yes, start a new season</button><button class="btn" id="season-no">Cancel</button></div>
+    </div>
+    <div id="season-step2" style="display:none">
+      <p class="modal-title">New season details</p>
+      <p class="modal-sub">You can load the new schedule right after this.</p>
+      <div class="field" style="margin-bottom:12px"><label class="muted" style="font-size:11px;display:block;margin-bottom:3px">Season name</label><input class="styled" id="season-name"></div>
+      <div class="field" style="margin-bottom:14px"><label class="muted" style="font-size:11px;display:block;margin-bottom:3px">League schedule link for the new season</label><input class="styled" id="season-url" placeholder="https://cityofirvineadultsports.teamsidelinesite.com/schedule?divisionid=..."></div>
+      <div style="display:flex;gap:8px;align-items:center"><button class="save-btn" id="season-start">Start season</button><button class="btn" id="season-back">Back</button>
+        <span id="season-err" style="color:var(--loss);font-size:12px"></span></div>
+    </div>
+  </div>
+</div>
 <div id="sync-modal-overlay" class="modal-overlay hidden">
   <div class="modal-box" style="max-width:720px">
     <button class="modal-close" id="sync-modal-close">&times;</button>
@@ -370,7 +413,7 @@ input[type=number]::-webkit-inner-spin-button,input[type=number]::-webkit-outer-
 </div>
 
 <script>
-window.VU_PUBLIC={updated:"20260925095121",updatedText:"Sep 25, 2026 9:51 AM"};
+window.VU_PUBLIC={updated:"20260925100834",updatedText:"Sep 25, 2026 10:08 AM"};
 (function(){
   const realFetch=window.fetch.bind(window);
   const routes=[
@@ -378,7 +421,8 @@ window.VU_PUBLIC={updated:"20260925095121",updatedText:"Sep 25, 2026 9:51 AM"};
     [/^\/api\/stats$/,                  ()=>'data/stats/all.json'],
     [/^\/api\/stats\/player\/(\d+)$/,   m=>'data/player-seasons/'+m[1]+'.json'],
     [/^\/api\/player-profile\/(\d+)$/,  m=>'data/profiles/'+m[1]+'.json'],
-    [/^\/api\/(games|standings|seasons|players)$/, m=>'data/'+m[1]+'.json'],
+    [/^\/api\/(games|standings)\?season_id=(\d+)$/, m=>'data/'+m[1]+'/'+m[2]+'.json'],
+    [/^\/api\/(games|standings|seasons|players|league-seasons)$/, m=>'data/'+m[1]+'.json'],
   ];
   const json=(v,status)=>new Response(JSON.stringify(v),{status:status||200,headers:{'Content-Type':'application/json'}});
   window.fetch=function(url,opts){
@@ -533,9 +577,13 @@ function renderStandings(standings){
     else _standSort={key:k,desc:!['place','team','l','ra','gb','sos_remaining'].includes(k)};  // best-first
     renderStandings();
   }));
-  box.querySelectorAll('.team-link').forEach(el=>el.addEventListener('click',()=>openTeamModal(el.dataset.team)));
+  if(_standArchived) stripTeamLinks(box);
+  else box.querySelectorAll('.team-link').forEach(el=>el.addEventListener('click',()=>openTeamModal(el.dataset.team)));
+  if(!_standData.length) box.innerHTML='<p class="empty-state">No results yet this season.</p>';
 }
 let _standData=[];
+let _standArchived=false, _schedArchived=false;   // viewing a past season (from the Season dropdown)
+function stripTeamLinks(box){ box.querySelectorAll('.team-link').forEach(el=>el.replaceWith(document.createTextNode(el.textContent))); }
 
 // ─── schedule ───────────────────────────────────────────────────────────────
 function renderSchedule(games){
@@ -573,8 +621,9 @@ function renderSchedule(games){
   });
   h+='</tbody></table>';
   const box=document.getElementById('schedule-container');
-  box.innerHTML=h;
-  box.querySelectorAll('.team-link').forEach(el=>el.addEventListener('click',()=>openTeamModal(el.dataset.team)));
+  box.innerHTML=games.length?h:'<p class="empty-state">No games yet this season'+(PUBLIC?'.':' &mdash; use <b>Sync from league site</b> on Enter Results to load the schedule.')+'</p>';
+  if(_schedArchived) stripTeamLinks(box);
+  else box.querySelectorAll('.team-link').forEach(el=>el.addEventListener('click',()=>openTeamModal(el.dataset.team)));
 }
 function teamNameLink(team){
   return team==='Vortex Unit'?esc(team):`<span class="team-link" data-team="${esc(team)}">${esc(team)}</span>`;
@@ -754,7 +803,8 @@ function renderEnter(games){
     });
   });
   h+='</tbody></table>';
-  document.getElementById('enter-container').innerHTML=h;
+  document.getElementById('enter-container').innerHTML=games.length?h:
+    '<p class="empty-state">No games yet this season. Click <b>Sync from league site</b> above to load the schedule.</p>';
 
   // decide the row's winner (score first, else the clicked team) and repaint box + W/L
   const refresh=row=>{
@@ -815,8 +865,8 @@ function renderEnter(games){
       const p=g?isPlayed(g):(scored||!!body.winner);
       const tag=row.querySelector('.played-tag');
       tag.textContent=p?'Played':'Unplayed'; tag.classList.toggle('done',p);
-      renderSchedule(_games);
-      fetch('/api/standings').then(r=>r.json()).then(renderStandings);
+      if(!_schedArchived) renderSchedule(_games);
+      fetch('/api/standings').then(r=>r.json()).then(st=>{_standings=st; if(!_standArchived) renderStandings(st);});
     });
   });
 }
@@ -1133,7 +1183,7 @@ function flashFlag(id){
 const mainLineup=LineupEditor(
   document.getElementById('lineup-container'),
   document.getElementById('lineup-missing'),
-  ()=>{refreshAddLineupSelect(); autosaveLineup();}
+  ()=>{refreshAddLineupSelect(); autosaveLineup(); refreshStrengthSoon();}
 );
 async function saveLineup(){
   await fetch('/api/lineup',{method:'POST',headers:{'Content-Type':'application/json'},
@@ -1145,6 +1195,7 @@ const autosaveLineup=debounce(saveLineup,700);
 async function loadLineupSection(){
   mainLineup.setRows(rowsFromApi(await fetch('/api/lineup').then(r=>r.json())));
   refreshAddLineupSelect();
+  refreshStrength(true);
 }
 function refreshAddLineupSelect(){
   fillPlayerSelect(document.getElementById('add-lineup-player-select'),
@@ -1173,6 +1224,75 @@ document.getElementById('add-lineup-confirm-btn').addEventListener('click',()=>{
   mainLineup.addPlayer(pid,p.name);
   document.getElementById('add-player-lineup-form').style.display='none';
 });
+
+// ─── lineup strength ─────────────────────────────────────────────────────────
+// Scores the lineup on the Lineup tab with the Smart Generate model (recent-weighted,
+// sample-size-adjusted hit rates; expected runs over a game), compares it with the best
+// 10 active players in their best order, and shows how each changes the odds for the next game.
+let _lsRatings=null, _lsBest=null;
+const refreshStrengthSoon=debounce(()=>refreshStrength(false),300);
+async function refreshStrength(reload){
+  const box=document.getElementById('lineup-strength'); if(!box) return;
+  if(reload||!_lsRatings){
+    _lsRatings=await fetch('/api/smart-ratings').then(r=>r.json()).catch(()=>null);
+    _lsBest=null;
+  }
+  if(!_lsRatings){box.innerHTML=''; return;}
+  const lg=SMART_EVENTS.map(e=>_lsRatings.league[e]||0);
+  const ratesOf=pid=>{const d=_lsRatings.players[pid]; return d?SMART_EVENTS.map(e=>d.rates[e]):lg;};
+  const nameOf=pid=>(_players.find(p=>p.id===pid)||{}).name||'?';
+  const baseline=smartGameRuns(Array(10).fill(lg));   // a lineup of average Vortex hitters
+
+  // best 10 active players (by run value per PA), then their best batting order
+  if(!_lsBest){
+    const lw=[0.70,0.90,1.25,1.60,2.00,0,0];
+    const val=pid=>ratesOf(pid).reduce((t,v,i)=>t+v*lw[i],0);
+    const top=_players.filter(p=>p.active).map(p=>p.id).sort((a,b)=>val(b)-val(a)).slice(0,10);
+    if(top.length){
+      const rateById=new Map(top.map(id=>[id,ratesOf(id)]));
+      const {order,runs}=smartOptimize(rateById,[top],400);
+      _lsBest={order,runs};
+    } else _lsBest={order:[],runs:0};
+  }
+  const rows=mainLineup.rows;
+  const cur=rows.length?smartGameRuns(rows.map(r=>ratesOf(r.player_id))):0;
+
+  // next unplayed Vortex game, and a pythagorean nudge to its odds for each lineup
+  const next=_games.filter(g=>(g.home_team===VORTEX||g.away_team===VORTEX)&&!isPlayed(g))
+    .sort((a,b)=>a.date_iso.localeCompare(b.date_iso)||a.time.localeCompare(b.time))[0];
+  const scored=_games.filter(g=>g.away_score!==null&&g.home_score!==null);
+  const rpg=scored.length?scored.reduce((t,g)=>t+g.away_score+g.home_score,0)/scored.length:20;
+  const exp=Math.pow(rpg,0.287);   // Pythagenpat exponent for this league's scoring
+  const odds=(p0,runs)=>{const m=Math.pow(runs/baseline,exp); return p0*m/(p0*m+1-p0);};
+  // show runs on the scale of what Vortex really scores (the model runs a little hot); ratios are unchanged
+  const ours=scored.filter(g=>g.home_team===VORTEX||g.away_team===VORTEX);
+  const realRpg=ours.length?ours.reduce((t,g)=>t+(g.home_team===VORTEX?g.home_score:g.away_score),0)/ours.length:null;
+  const shown=r=>realRpg?r*realRpg/baseline:r;
+
+  const diff=shown(cur)-shown(_lsBest.runs), pct=v=>Math.round(v*100)+'%';
+  const sign=v=>(v>0?'+':v<0?'−':'')+Math.abs(v).toFixed(1);
+  const vsAvg=r=>{const d=(r/baseline-1)*100; return `${d>=0?'+':'−'}${Math.abs(d).toFixed(0)}% vs an average Vortex lineup`;};
+  let h=`<p class="section-heading" style="margin-top:0">Lineup Strength</p>`;
+  if(!rows.length){ box.innerHTML=h+'<p class="muted" style="margin:0">Add players to the lineup to see how strong it is.</p>'; return; }
+  h+=`<div class="ls-tiles">
+    <div class="ls-tile"><b>${shown(cur).toFixed(1)}</b><span>This lineup &middot; runs/game</span><div class="muted" style="font-size:11px;margin-top:3px">${rows.length} batters &middot; ${vsAvg(cur)}</div></div>
+    <div class="ls-tile"><b>${shown(_lsBest.runs).toFixed(1)}</b><span>Best 10 available &middot; runs/game</span><div class="muted" style="font-size:11px;margin-top:3px">${vsAvg(_lsBest.runs)}</div></div>
+    <div class="ls-tile"><b style="color:${diff>=-0.05?'var(--win)':'var(--loss)'}">${sign(diff)}</b><span>vs best possible</span><div class="muted" style="font-size:11px;margin-top:3px">${diff>=-0.05?'as good as it gets':Math.abs(diff/_lsBest.runs*100).toFixed(0)+'% fewer runs'}</div></div>
+  </div>`;
+  if(next){
+    const home=next.home_team===VORTEX, opp=home?next.away_team:next.home_team;
+    const p0=buildMatchup(_games,_standings,opp).finalPct;
+    h+=`<div class="ls-next">Next game: <b>${esc(next.date_disp)} ${esc(next.time)}</b> ${home?'vs':'@'} <b>${esc(opp)}</b> <span class="muted">&middot; ${esc(next.location||'')}</span>
+      <div class="ls-odds">
+        <div><b>${pct(p0)}</b>season estimate</div>
+        <div><b style="color:${odds(p0,cur)>=p0?'var(--win)':'var(--loss)'}">${pct(odds(p0,cur))}</b>with this lineup</div>
+        <div><b>${pct(odds(p0,_lsBest.runs))}</b>with best 10</div>
+      </div></div>`;
+  } else h+=`<div class="ls-next muted">No upcoming games on the schedule.</div>`;
+  h+=`<p class="muted" style="font-size:11px;margin:12px 0 0">Best 10: ${_lsBest.order.map((id,i)=>`${i+1}. ${esc(nameOf(id))}`).join(' &nbsp; ')}</p>
+    <p class="muted" style="font-size:11px;margin:4px 0 0">Uses the same recent-weighted ratings as Smart Generate${realRpg?`, with runs scaled so an average Vortex lineup scores what we really average (${realRpg.toFixed(1)}/game)`:''}. The season estimate is the matchup odds from the standings; the other two adjust it by how many runs each lineup projects compared with an average Vortex lineup.</p>`;
+  box.innerHTML=h;
+}
 
 // ─── auto lineup ─────────────────────────────────────────────────────────────
 // Season, sort stat, who's checked and the generated order are saved in the database, so the
@@ -1333,9 +1453,9 @@ function smartGameRuns(rates){
 }
 
 // hill-climb from each start order (then random ones until time runs out); returns the best order
-function smartOptimize(rateById,starts){
+function smartOptimize(rateById,starts,timeMs=SMART_TIME_MS){
   const score=order=>smartGameRuns(order.map(id=>rateById.get(id)));
-  const deadline=performance.now()+SMART_TIME_MS;
+  const deadline=performance.now()+timeMs;
   let best=null, bestRuns=-1;
   const climb=order=>{
     let cur=[...order], curRuns=score(cur), improved=true;
@@ -2325,6 +2445,7 @@ async function loadAll(){
   renderStandings(_standings);
   renderSchedule(_games);
   renderEnter(_games);
+  initSeasonPickers();
 
   // populate auto-lineup season select
   const autoSel=document.getElementById('auto-season-select');
@@ -2340,6 +2461,73 @@ async function loadAll(){
   await loadLineupSection();
   await restoreAutoState();
   renderPlayersTable();
+}
+
+// ─── seasons: archive dropdowns + starting a new season ──────────────────────
+// League games belong to a season. The newest season is the one being played; older ones are
+// the archive, viewable from the Season dropdown on Standings and Schedule.
+let _leagueSeasons=[];
+async function initSeasonPickers(){
+  _leagueSeasons=await fetch('/api/league-seasons').then(r=>r.json()).catch(()=>[]);
+  const cur=_leagueSeasons.find(s=>s.current);
+  const nm=document.getElementById('enter-season-name'); if(nm) nm.textContent=cur?cur.name:'';
+  [['standings-season','standings-season-row'],['schedule-season','schedule-season-row']].forEach(([id,row])=>{
+    const sel=document.getElementById(id);
+    sel.innerHTML=_leagueSeasons.map(s=>`<option value="${s.current?'':s.id}">${esc(s.name)}${s.current?' (current)':''}</option>`).join('');
+    document.getElementById(row).style.display=_leagueSeasons.length>1?'flex':'none';
+  });
+}
+document.getElementById('standings-season').addEventListener('change',async e=>{
+  const sid=e.target.value; _standArchived=!!sid;
+  renderStandings(sid?await fetch('/api/standings?season_id='+sid).then(r=>r.json()):_standings);
+});
+document.getElementById('schedule-season').addEventListener('change',async e=>{
+  const sid=e.target.value; _schedArchived=!!sid;
+  renderSchedule(sid?await fetch('/api/games?season_id='+sid).then(r=>r.json()):_games);
+});
+
+// Fall 2026 -> Winter 2026 -> Spring 2027 -> Summer 2027 -> Fall 2027
+function suggestSeasonName(cur){
+  const m=/^(Fall|Winter|Spring|Summer)\s+(\d{4})$/i.exec(cur||''); if(!m) return '';
+  const y=+m[2], t=m[1][0].toUpperCase()+m[1].slice(1).toLowerCase();
+  return {Fall:`Winter ${y}`,Winter:`Spring ${y+1}`,Spring:`Summer ${y}`,Summer:`Fall ${y}`}[t];
+}
+if(!PUBLIC){
+  const ov=document.getElementById('season-modal-overlay');
+  const step=n=>{document.getElementById('season-step1').style.display=n===1?'':'none';
+                 document.getElementById('season-step2').style.display=n===2?'':'none';};
+  const close=()=>ov.classList.add('hidden');
+  document.getElementById('new-season-btn').addEventListener('click',()=>{
+    const cur=(_leagueSeasons.find(s=>s.current)||{}).name||'the current season';
+    document.getElementById('season-step1-text').textContent=`This wraps up ${cur}.`;
+    document.getElementById('season-name').value=suggestSeasonName(cur);
+    document.getElementById('season-url').value='';
+    document.getElementById('season-err').textContent='';
+    step(1); ov.classList.remove('hidden');
+  });
+  document.getElementById('season-no').addEventListener('click',close);
+  document.getElementById('season-modal-close').addEventListener('click',close);
+  ov.addEventListener('click',e=>{ if(e.target===ov) close(); });
+  document.getElementById('season-yes').addEventListener('click',()=>{step(2); document.getElementById('season-url').focus();});
+  document.getElementById('season-back').addEventListener('click',()=>step(1));
+  document.getElementById('season-start').addEventListener('click',async()=>{
+    const name=document.getElementById('season-name').value.trim(), url=document.getElementById('season-url').value.trim();
+    const err=document.getElementById('season-err');
+    if(!name){err.textContent='Enter a season name.'; return;}
+    if(!url){err.textContent='Paste the new season\'s league link.'; return;}
+    const res=await fetch('/api/new-season',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({name,url})});
+    const body=await res.json();
+    if(!res.ok){err.textContent=body.error||'Could not start the season.'; return;}
+    location.hash='new-season';   // after reload, land on Enter Results with a "load the schedule" note
+    location.reload();
+  });
+  if(location.hash==='#new-season'){
+    history.replaceState(null,'',location.pathname);
+    switchTab('enter');
+    const b=document.getElementById('new-season-banner');
+    b.innerHTML='New season started &#10003; &mdash; the last season is in the archive. Next: click <b>Sync from league site</b> to load the new schedule.';
+    b.style.display='block';
+  }
 }
 
 // ─── league schedule sync ────────────────────────────────────────────────────
@@ -2401,7 +2589,9 @@ document.getElementById('sync-check').addEventListener('click',async()=>{
     if(picked.some(c=>c.kind==='missing')&&!confirm('Remove the ticked games that are no longer on the league schedule?')) return;
     const r=await fetch('/api/league-sync/apply',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({changes:picked})}).then(r=>r.json());
     [_games,_standings]=await Promise.all([fetch('/api/games').then(r=>r.json()),fetch('/api/standings').then(r=>r.json())]);
-    renderStandings(_standings); renderSchedule(_games); renderEnter(_games);
+    if(!_standArchived) renderStandings(_standings);
+    if(!_schedArchived) renderSchedule(_games);
+    renderEnter(_games);
     out.innerHTML=`<p style="color:var(--win);margin:14px 0 0">Applied ${r.applied} change${r.applied===1?'':'s'} &#10003; &mdash; Schedule, Enter Results and Standings are updated.</p>`;
     status.textContent='';
   });
