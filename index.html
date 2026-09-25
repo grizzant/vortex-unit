@@ -69,8 +69,12 @@ input.styled:focus{outline:none;border-color:var(--accent)}
 tr.editable-row td input{width:52px}
 .bench-count{font-size:12px;color:var(--sub);font-weight:600}
 .missing-pos{font-size:11px;color:var(--loss)}
-.pos-select{background:var(--bg);color:var(--ink);border:1px solid var(--line);border-radius:4px;padding:2px 4px;font-size:12px}
-.pos-select:focus{outline:none;border-color:var(--accent)}
+.pos-input{width:48px;background:var(--bg);color:var(--ink);border:1px solid var(--line);border-radius:4px;padding:3px 4px;font-size:12px;font-weight:600;text-align:center}
+.pos-input:focus{outline:none;border-color:var(--accent)}
+.pos-input.pos-bad{border-color:var(--loss);color:var(--loss);background:rgba(255,107,107,.14)}
+.pos-suggest{position:absolute;z-index:50;background:var(--card);border:1px solid var(--line);border-radius:6px;padding:3px;box-shadow:0 6px 18px rgba(0,0,0,.45);min-width:56px}
+.pos-opt{padding:4px 10px;font-size:12px;font-weight:600;border-radius:4px;cursor:pointer;text-align:center}
+.pos-opt.active,.pos-opt:hover{background:var(--accent);color:#fff}
 .inline-form{background:var(--card);border:1px solid var(--line);border-radius:8px;padding:14px 16px;margin-bottom:14px;display:flex;flex-wrap:wrap;gap:8px;align-items:flex-end}
 .inline-form label{font-size:11px;color:var(--sub);display:block;margin-bottom:3px}
 .inline-form .field{display:flex;flex-direction:column}
@@ -119,10 +123,10 @@ tr.editable-row td input{width:52px}
 .checklist-item label{flex:1;cursor:pointer}
 .checklist-item .stat-badge{font-size:11px;color:var(--sub);min-width:60px;text-align:right}
 .lu-cell{padding:3px 4px;cursor:cell;user-select:none;outline:none}
-.lu-cell select{pointer-events:none}
-.lu-cell.editing select{pointer-events:auto}
+.lu-cell .pos-input{pointer-events:none}
+.lu-cell.editing .pos-input{pointer-events:auto}
 .lu-cell.cell-sel{outline:2px solid var(--yellow);outline-offset:-2px;background:#2a2540}
-.lu-cell.cell-sel select{background:transparent}
+.lu-cell.cell-sel .pos-input:not(.pos-bad){background:transparent}
 .lu-cell.cell-flash{background:#3a3160}
 .lu-summary{width:auto;min-width:520px;margin-top:4px}
 .lu-summary td,.lu-summary th{padding:5px 9px}
@@ -336,7 +340,7 @@ input[type=number]::-webkit-inner-spin-button,input[type=number]::-webkit-outer-
 </div>
 
 <script>
-window.VU_PUBLIC={updated:"20260925093417",updatedText:"Sep 25, 2026 9:34 AM"};
+window.VU_PUBLIC={updated:"20260925094038",updatedText:"Sep 25, 2026 9:40 AM"};
 (function(){
   const realFetch=window.fetch.bind(window);
   const routes=[
@@ -793,10 +797,12 @@ const POS_CHOICES=[...POSITIONS,'B'];   // B = benched
 const INNINGS=6;
 let _posClip=null;                      // {vals,h,w} block; shared so a copy on one lineup pastes on another
 
-function posSelect(val){
-  let s=`<select class="pos-select" tabindex="-1" data-v="${val}"><option value=""></option>`;
-  POS_CHOICES.forEach(p=>{s+=`<option value="${p}" ${val===p?'selected':''}>${p}</option>`;});
-  return s+`</select>`;
+// Positions are typed, with suggestions; a typed match is upper-cased and anything that
+// isn't a position is shown in red (and not saved).
+const isPos=v=>POS_CHOICES.includes(v);
+const normPos=v=>{const t=String(v||'').trim(); return POS_CHOICES.find(p=>p.toLowerCase()===t.toLowerCase())||t;};
+function posInput(val){
+  return `<input class="pos-input${val&&!isPos(val)?' pos-bad':''}" tabindex="-1" value="${esc(val)}" autocomplete="off" spellcheck="false" maxlength="6">`;
 }
 function rowsFromApi(list){
   return list.map(r=>({
@@ -834,7 +840,7 @@ function LineupEditor(tableEl,summaryEl,onChange){
     h+=`<th>Benched</th><th>Move</th></tr></thead><tbody>`;
     ed.rows.forEach((row,r)=>{
       h+=`<tr data-r="${r}"><td class="muted">${r+1}</td><td>${esc(row.player_name)}</td>`;
-      row.inn.forEach((v,i)=>{h+=`<td class="lu-cell" tabindex="-1" data-i="${i}">${posSelect(v)}</td>`;});
+      row.inn.forEach((v,i)=>{h+=`<td class="lu-cell" tabindex="-1" data-i="${i}">${posInput(v)}</td>`;});
       h+=`<td class="bench-count">${benchCount(row)}</td>
         <td style="white-space:nowrap">
           <button class="btn btn-sm move-up" ${r===0?'disabled':''} title="Move up">&#9650;</button>
@@ -877,7 +883,8 @@ function LineupEditor(tableEl,summaryEl,onChange){
   };
 
   // ── spreadsheet-style selection: click, drag, Shift+click, Cmd/Ctrl+click ──────────
-  // A plain click only selects. Double-click (or Enter) opens the dropdown for that one cell.
+  // A plain click only selects. Typing, double-click or Enter edits; the typed value goes into
+  // every selected cell.
   const cellOf=el=>el.closest&&el.closest('.lu-cell');
   const rowIdx=el=>parseInt(el.closest('tr').dataset.r,10);
   const keyOf=(r,i)=>r+','+i;
@@ -897,20 +904,66 @@ function LineupEditor(tableEl,summaryEl,onChange){
   const setValue=(r,i,val)=>{
     ed.rows[r].inn[i]=val;
     const td=tdAt(r,i); if(!td) return;
-    const sel=td.querySelector('select'); sel.value=val; sel.dataset.v=val;
+    const inp=td.querySelector('.pos-input'); inp.value=val; inp.classList.toggle('pos-bad',!!val&&!isPos(val));
     td.closest('tr').querySelector('.bench-count').textContent=benchCount(ed.rows[r]);
   };
   const flash=()=>{
     const tds=cellsOf().map(([r,i])=>tdAt(r,i)).filter(Boolean);
     tds.forEach(t=>t.classList.add('cell-flash')); setTimeout(()=>tds.forEach(t=>t.classList.remove('cell-flash')),250);
   };
-  const startEdit=(r,i)=>{
-    const td=tdAt(r,i); if(!td) return;
-    td.classList.add('editing');
-    const sel=td.querySelector('select'); sel.focus();
-    try{if(sel.showPicker) sel.showPicker();}catch(_){}
+  // ── typing with suggestions ──
+  const sug=document.createElement('div'); sug.className='pos-suggest'; sug.style.display='none';
+  document.body.appendChild(sug);
+  let edit=null;   // {td, inp, orig, targets:[[r,i]...], active:index into matches}
+  const matches=()=>{
+    const t=edit.inp.value.trim().toLowerCase();
+    return POS_CHOICES.filter(p=>p.toLowerCase().startsWith(t));
   };
-  const stopEdit=td=>{td.classList.remove('editing'); td.focus();};
+  const showSug=()=>{
+    if(!edit) return;
+    const m=matches();
+    if(!m.length){sug.style.display='none'; return;}
+    if(edit.active>=m.length) edit.active=m.length-1;
+    sug.innerHTML=m.map((p,k)=>`<div class="pos-opt${k===edit.active?' active':''}" data-p="${p}">${p}</div>`).join('');
+    const b=edit.inp.getBoundingClientRect();
+    sug.style.left=(b.left+window.scrollX)+'px'; sug.style.top=(b.bottom+window.scrollY+3)+'px';
+    sug.style.minWidth=b.width+'px'; sug.style.display='block';
+  };
+  const hideSug=()=>{sug.style.display='none';};
+  sug.addEventListener('mousedown',e=>e.preventDefault());   // keep the input focused
+  sug.addEventListener('click',e=>{
+    const o=e.target.closest('.pos-opt'); if(o&&edit) commitEdit(o.dataset.p);
+  });
+  const startEdit=(r,i,typed)=>{
+    const td=tdAt(r,i); if(!td) return;
+    const inp=td.querySelector('.pos-input');
+    const k=keyOf(r,i);
+    edit={td,inp,orig:inp.value,active:typed===undefined?-1:0,
+          targets:ed.sel.has(k)&&ed.sel.size>1?cellsOf():[[r,i]]};
+    td.classList.add('editing');
+    if(typed!==undefined) inp.value=typed;
+    inp.focus();
+    if(typed===undefined) inp.select(); else inp.setSelectionRange(inp.value.length,inp.value.length);
+    showSug();
+  };
+  // pick = a clicked/highlighted suggestion; otherwise whatever was typed (upper-cased if it's a position)
+  const commitEdit=pick=>{
+    if(!edit) return;
+    const {td,inp,orig,targets}=edit; edit=null; hideSug();
+    const val=normPos(pick!==undefined?pick:inp.value);
+    td.classList.remove('editing');
+    targets.forEach(([r,i])=>setValue(r,i,val));
+    if(val!==orig||targets.length>1) changed();
+    td.focus();
+  };
+  const cancelEdit=()=>{
+    if(!edit) return;
+    const {td,inp,orig}=edit; edit=null; hideSug();
+    inp.value=orig; td.classList.remove('editing'); td.focus();
+  };
+  tableEl.addEventListener('input',e=>{
+    if(edit&&e.target===edit.inp){edit.active=edit.inp.value.trim()?0:-1; showSug();}
+  });
 
   tableEl.addEventListener('mousedown',e=>{
     const td=cellOf(e.target);
@@ -936,15 +989,9 @@ function LineupEditor(tableEl,summaryEl,onChange){
     const td=cellOf(e.target); if(!td) return;
     const p=posOf(td); ed.anchor=ed.cursor=p; ed.sel=new Set([keyOf(p.r,p.i)]); paint(); startEdit(p.r,p.i);
   });
+  // clicking away saves what was typed
   tableEl.addEventListener('focusout',e=>{
-    const td=cellOf(e.target);
-    if(td&&e.target.matches('select')) td.classList.remove('editing');
-  });
-  // picking from the dropdown changes just that cell
-  tableEl.addEventListener('change',e=>{
-    if(!e.target.matches('select.pos-select')) return;
-    const td=cellOf(e.target), p=posOf(td);
-    setValue(p.r,p.i,e.target.value); changed(); stopEdit(td);
+    if(edit&&e.target===edit.inp) commitEdit();
   });
 
   const copySel=cut=>{
@@ -976,8 +1023,21 @@ function LineupEditor(tableEl,summaryEl,onChange){
 
   tableEl.addEventListener('keydown',e=>{
     const t=e.target;
-    if(t.matches&&t.matches('select.pos-select')){        // editing one cell's dropdown
-      if(e.key==='Escape'||e.key==='Enter'){e.preventDefault(); stopEdit(cellOf(t));}
+    if(edit&&t===edit.inp){                                 // typing in a cell
+      const m=matches();
+      if(e.key==='ArrowDown'||e.key==='ArrowUp'){
+        if(m.length){edit.active=(edit.active+(e.key==='ArrowDown'?1:-1)+m.length)%m.length; showSug();}
+        e.preventDefault();
+      } else if(e.key==='Enter'||e.key==='Tab'){
+        const pick=edit.active>=0&&m[edit.active]?m[edit.active]:undefined;
+        const p=posOf(edit.td);
+        commitEdit(pick); e.preventDefault();
+        if(e.key==='Tab'){   // Tab moves to the next inning, like a spreadsheet
+          const n={r:p.r,i:Math.min(INNINGS-1,p.i+(e.shiftKey?-1:1))};
+          n.i=Math.max(0,n.i); ed.anchor=ed.cursor=n; ed.sel=new Set([keyOf(n.r,n.i)]); paint();
+          const nt=tdAt(n.r,n.i); if(nt) nt.focus();
+        }
+      } else if(e.key==='Escape'){cancelEdit(); e.preventDefault();}
       return;
     }
     const td=cellOf(t); if(!td) return;
@@ -993,6 +1053,7 @@ function LineupEditor(tableEl,summaryEl,onChange){
       cellsOf().forEach(([r,i])=>setValue(r,i,'')); changed(); e.preventDefault();
     }
     else if(e.key==='Enter'||e.key==='F2'){startEdit(cur.r,cur.i); e.preventDefault();}
+    else if(e.key.length===1&&!mod&&/[a-z0-9]/i.test(e.key)){startEdit(cur.r,cur.i,e.key); e.preventDefault();}
     else if(e.key.startsWith('Arrow')){
       const dlt={ArrowUp:[-1,0],ArrowDown:[1,0],ArrowLeft:[0,-1],ArrowRight:[0,1]}[e.key];
       const p={r:Math.max(0,Math.min(ed.rows.length-1,cur.r+dlt[0])),i:Math.max(0,Math.min(INNINGS-1,cur.i+dlt[1]))};
