@@ -164,6 +164,15 @@ input[type=number]::-webkit-inner-spin-button,input[type=number]::-webkit-outer-
 .team-link:hover{color:var(--accent)}
 .modal-overlay{position:fixed;inset:0;background:rgba(6,5,10,.72);display:flex;align-items:flex-start;justify-content:center;padding:40px 16px;z-index:100;overflow-y:auto}
 .modal-overlay.hidden{display:none}
+.sync-bar{display:flex;align-items:center;gap:12px;flex-wrap:wrap;margin-bottom:14px;font-size:12px}
+.sync-paste{width:100%;min-height:110px;background:var(--bg);color:var(--ink);border:1px solid var(--line);border-radius:8px;padding:9px 11px;font-size:12px;font-family:inherit;resize:vertical}
+.sync-paste:focus{outline:none;border-color:var(--accent)}
+.sync-item{display:grid;grid-template-columns:22px 1fr;gap:6px 8px;padding:8px 0;border-bottom:1px solid var(--line);font-size:13px}
+.sync-item:last-child{border-bottom:none}
+.sync-item input{margin-top:3px}
+.sync-item .chg{grid-column:2;font-size:12px;color:var(--sub)}
+.sync-item .chg b{color:var(--ink);font-weight:600}
+.sync-item .old{text-decoration:line-through;opacity:.75}
 .modal-box{background:var(--card);border:1px solid var(--line);border-radius:14px;max-width:640px;width:100%;padding:22px 24px 26px;position:relative}
 .modal-close{position:absolute;top:14px;right:16px;background:none;border:none;color:var(--sub);font-size:20px;cursor:pointer;line-height:1}
 .modal-close:hover{color:var(--ink)}
@@ -203,6 +212,10 @@ input[type=number]::-webkit-inner-spin-button,input[type=number]::-webkit-outer-
   <div id="tab-enter" class="tab-section">
     <p class="section-heading">Enter Results</p>
     <div class="card">
+      <div class="sync-bar">
+        <button class="save-btn" id="sync-btn">Sync from league site</button>
+        <span class="muted">Opens the league schedule &mdash; copy the whole page (&#8984;A, &#8984;C) and paste it in</span>
+      </div>
       <div id="enter-container"></div>
     </div>
   </div>
@@ -332,6 +345,23 @@ input[type=number]::-webkit-inner-spin-button,input[type=number]::-webkit-outer-
   </div>
 </main>
 
+<div id="sync-modal-overlay" class="modal-overlay hidden">
+  <div class="modal-box" style="max-width:720px">
+    <button class="modal-close" id="sync-modal-close">&times;</button>
+    <p class="modal-title">Sync from league site</p>
+    <p class="modal-sub">Paste the league schedule page, check what changed, and apply only what you want. Your own edits stay editable afterwards.</p>
+    <div class="field" style="margin-bottom:12px">
+      <label class="muted" style="font-size:11px;display:block;margin-bottom:3px">League schedule link (saved for next time &mdash; change it when a new season starts)</label>
+      <div style="display:flex;gap:8px"><input class="styled" id="sync-url"><button class="btn" id="sync-open">Open</button></div>
+    </div>
+    <textarea id="sync-paste" class="sync-paste" placeholder="Paste the league page here (&#8984;V)"></textarea>
+    <div style="display:flex;gap:8px;align-items:center;margin-top:10px">
+      <button class="save-btn" id="sync-check">Check for changes</button>
+      <span class="muted" id="sync-status" style="font-size:12px"></span>
+    </div>
+    <div id="sync-results"></div>
+  </div>
+</div>
 <div id="team-modal-overlay" class="modal-overlay hidden">
   <div class="modal-box">
     <button class="modal-close" id="team-modal-close">&times;</button>
@@ -340,7 +370,7 @@ input[type=number]::-webkit-inner-spin-button,input[type=number]::-webkit-outer-
 </div>
 
 <script>
-window.VU_PUBLIC={updated:"20260925094125",updatedText:"Sep 25, 2026 9:41 AM"};
+window.VU_PUBLIC={updated:"20260925095121",updatedText:"Sep 25, 2026 9:51 AM"};
 (function(){
   const realFetch=window.fetch.bind(window);
   const routes=[
@@ -801,6 +831,18 @@ let _posClip=null;                      // {vals,h,w} block; shared so a copy on
 // isn't a position is shown in red (and not saved).
 const isPos=v=>POS_CHOICES.includes(v);
 const normPos=v=>{const t=String(v||'').trim(); return POS_CHOICES.find(p=>p.toLowerCase()===t.toLowerCase())||t;};
+// one suggestion list shared by every lineup editor (game lineups are rebuilt each time a game opens)
+let _posSug=null, _posSugPick=null;
+function posSuggestBox(){
+  if(_posSug) return _posSug;
+  _posSug=document.createElement('div'); _posSug.className='pos-suggest'; _posSug.style.display='none';
+  _posSug.addEventListener('mousedown',e=>e.preventDefault());   // keep the cell's input focused
+  _posSug.addEventListener('click',e=>{
+    const o=e.target.closest('.pos-opt'); if(o&&_posSugPick) _posSugPick(o.dataset.p);
+  });
+  document.body.appendChild(_posSug);
+  return _posSug;
+}
 function posInput(val){
   return `<input class="pos-input${val&&!isPos(val)?' pos-bad':''}" tabindex="-1" value="${esc(val)}" autocomplete="off" spellcheck="false" maxlength="6">`;
 }
@@ -912,12 +954,11 @@ function LineupEditor(tableEl,summaryEl,onChange){
     tds.forEach(t=>t.classList.add('cell-flash')); setTimeout(()=>tds.forEach(t=>t.classList.remove('cell-flash')),250);
   };
   // ── typing with suggestions ──
-  const sug=document.createElement('div'); sug.className='pos-suggest'; sug.style.display='none';
-  document.body.appendChild(sug);
+  const sug=posSuggestBox();
   let edit=null;   // {td, inp, orig, targets:[[r,i]...], active:index into matches}
   const matches=()=>{
     const t=edit.inp.value.trim().toLowerCase();
-    return POS_CHOICES.filter(p=>p.toLowerCase().startsWith(t));
+    return POS_CHOICES.filter(p=>p.toLowerCase().startsWith(t)).sort((a,b)=>a.length-b.length);   // RF before RCF
   };
   const showSug=()=>{
     if(!edit) return;
@@ -928,12 +969,9 @@ function LineupEditor(tableEl,summaryEl,onChange){
     const b=edit.inp.getBoundingClientRect();
     sug.style.left=(b.left+window.scrollX)+'px'; sug.style.top=(b.bottom+window.scrollY+3)+'px';
     sug.style.minWidth=b.width+'px'; sug.style.display='block';
+    _posSugPick=p=>commitEdit(p);
   };
   const hideSug=()=>{sug.style.display='none';};
-  sug.addEventListener('mousedown',e=>e.preventDefault());   // keep the input focused
-  sug.addEventListener('click',e=>{
-    const o=e.target.closest('.pos-opt'); if(o&&edit) commitEdit(o.dataset.p);
-  });
   const startEdit=(r,i,typed)=>{
     const td=tdAt(r,i); if(!td) return;
     const inp=td.querySelector('.pos-input');
@@ -947,14 +985,14 @@ function LineupEditor(tableEl,summaryEl,onChange){
     showSug();
   };
   // pick = a clicked/highlighted suggestion; otherwise whatever was typed (upper-cased if it's a position)
-  const commitEdit=pick=>{
+  const commitEdit=(pick,refocus=true)=>{
     if(!edit) return;
     const {td,inp,orig,targets}=edit; edit=null; hideSug();
     const val=normPos(pick!==undefined?pick:inp.value);
     td.classList.remove('editing');
     targets.forEach(([r,i])=>setValue(r,i,val));
     if(val!==orig||targets.length>1) changed();
-    td.focus();
+    if(refocus) td.focus();
   };
   const cancelEdit=()=>{
     if(!edit) return;
@@ -991,7 +1029,7 @@ function LineupEditor(tableEl,summaryEl,onChange){
   });
   // clicking away saves what was typed
   tableEl.addEventListener('focusout',e=>{
-    if(edit&&e.target===edit.inp) commitEdit();
+    if(edit&&e.target===edit.inp) commitEdit(undefined,!e.relatedTarget);   // don't steal focus back
   });
 
   const copySel=cut=>{
@@ -2303,6 +2341,71 @@ async function loadAll(){
   await restoreAutoState();
   renderPlayersTable();
 }
+
+// ─── league schedule sync ────────────────────────────────────────────────────
+// The league site blocks scripted access, so: open it in a new tab, copy the page, paste it here.
+let _syncUrl='', _syncChanges=[];
+if(!PUBLIC) fetch('/api/league-sync/config').then(r=>r.json()).then(c=>{_syncUrl=c.url; document.getElementById('sync-url').value=c.url;}).catch(()=>{});
+const syncOverlay=document.getElementById('sync-modal-overlay');
+function openLeagueSite(){ if(_syncUrl) window.open(_syncUrl,'_blank','noopener'); }
+document.getElementById('sync-btn').addEventListener('click',()=>{
+  openLeagueSite();   // must happen right in the click, or the browser blocks the new tab
+  document.getElementById('sync-results').innerHTML='';
+  document.getElementById('sync-status').textContent='';
+  document.getElementById('sync-paste').value='';
+  syncOverlay.classList.remove('hidden');
+  setTimeout(()=>document.getElementById('sync-paste').focus(),50);
+});
+document.getElementById('sync-open').addEventListener('click',openLeagueSite);
+document.getElementById('sync-url').addEventListener('change',e=>{
+  _syncUrl=e.target.value.trim();
+  fetch('/api/state/league_sync',{method:'PUT',headers:{'Content-Type':'application/json'},body:JSON.stringify({url:_syncUrl})});
+});
+document.getElementById('sync-modal-close').addEventListener('click',()=>syncOverlay.classList.add('hidden'));
+syncOverlay.addEventListener('click',e=>{ if(e.target===syncOverlay) syncOverlay.classList.add('hidden'); });
+
+const SYNC_GROUPS=[
+  ['moved','Moved or rescheduled','New date, time, field or week on the league site.'],
+  ['result','New results','Scores the league has posted that you haven\'t entered yet.'],
+  ['conflict','Doesn\'t match what you entered','Left unticked — tick one to replace your result with the league\'s.'],
+  ['new','New games','On the league schedule but not in the app.'],
+  ['missing','Not on the league schedule','In the app but gone from the league site. Played games are left unticked.'],
+];
+document.getElementById('sync-check').addEventListener('click',async()=>{
+  const text=document.getElementById('sync-paste').value, status=document.getElementById('sync-status');
+  const out=document.getElementById('sync-results');
+  if(!text.trim()){status.textContent='Paste the league page first.'; return;}
+  status.textContent='Checking…';
+  const res=await fetch('/api/league-sync/preview',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({text})}).then(r=>r.json());
+  if(res.error){status.textContent=res.error; out.innerHTML=''; return;}
+  _syncChanges=res.changes;
+  status.textContent=`${res.parsed} games read from the league site.`;
+  if(!res.changes.length){out.innerHTML='<p style="color:var(--win);margin:14px 0 0">Everything matches the league site &#10003;</p>'; return;}
+  let h='';
+  SYNC_GROUPS.forEach(([kind,title,note])=>{
+    const items=res.changes.filter(c=>c.kind===kind); if(!items.length) return;
+    h+=`<div class="modal-section-title">${title} (${items.length})</div><p class="muted" style="font-size:11px;margin:-4px 0 4px">${note}</p>`;
+    items.forEach(c=>{
+      h+=`<label class="sync-item"><input type="checkbox" data-id="${c.id}" ${c.default?'checked':''}>
+        <span><b>${esc(c.title)}</b></span>
+        <span class="chg">${c.before?`<span class="old">${esc(c.before)}</span> &rarr; `:''}<b>${esc(c.after)}</b></span></label>`;
+    });
+  });
+  h+=`<div style="display:flex;gap:8px;align-items:center;margin-top:14px"><button class="save-btn" id="sync-apply">Apply selected</button>
+    <span class="muted" style="font-size:12px">Nothing changes until you apply.</span></div>`;
+  out.innerHTML=h;
+  document.getElementById('sync-apply').addEventListener('click',async()=>{
+    const ids=new Set([...out.querySelectorAll('input[type=checkbox]:checked')].map(cb=>+cb.dataset.id));
+    const picked=_syncChanges.filter(c=>ids.has(c.id));
+    if(!picked.length){status.textContent='Nothing ticked.'; return;}
+    if(picked.some(c=>c.kind==='missing')&&!confirm('Remove the ticked games that are no longer on the league schedule?')) return;
+    const r=await fetch('/api/league-sync/apply',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({changes:picked})}).then(r=>r.json());
+    [_games,_standings]=await Promise.all([fetch('/api/games').then(r=>r.json()),fetch('/api/standings').then(r=>r.json())]);
+    renderStandings(_standings); renderSchedule(_games); renderEnter(_games);
+    out.innerHTML=`<p style="color:var(--win);margin:14px 0 0">Applied ${r.applied} change${r.applied===1?'':'s'} &#10003; &mdash; Schedule, Enter Results and Standings are updated.</p>`;
+    status.textContent='';
+  });
+});
 
 // ─── publish to web ─────────────────────────────────────────────────────────
 if(PUBLIC){
