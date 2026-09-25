@@ -138,6 +138,9 @@ tr.editable-row td input{width:52px}
 .score-input.wl-loss::placeholder{color:var(--loss);font-weight:700;opacity:1}
 input[type=number]{-moz-appearance:textfield;appearance:textfield}
 input[type=number]::-webkit-inner-spin-button,input[type=number]::-webkit-outer-spin-button{-webkit-appearance:none;margin:0}
+.vu-ring{display:inline-block;padding:1px 8px;border:2px solid var(--line);border-radius:6px;font-weight:700}
+.vu-ring.won{border-color:var(--yellow);color:var(--yellow)}
+.vu-ring.lost{border-color:var(--ink);color:var(--ink)}
 .team-link{cursor:pointer;text-decoration:underline dotted;text-underline-offset:3px}
 .team-link:hover{color:var(--accent)}
 .modal-overlay{position:fixed;inset:0;background:rgba(6,5,10,.72);display:flex;align-items:flex-start;justify-content:center;padding:40px 16px;z-index:100;overflow-y:auto}
@@ -318,7 +321,7 @@ input[type=number]::-webkit-inner-spin-button,input[type=number]::-webkit-outer-
 </div>
 
 <script>
-window.VU_PUBLIC={updated:"20260925091314",updatedText:"Sep 25, 2026 9:13 AM"};
+window.VU_PUBLIC={updated:"20260925091902",updatedText:"Sep 25, 2026 9:19 AM"};
 (function(){
   const realFetch=window.fetch.bind(window);
   const routes=[
@@ -496,7 +499,10 @@ function renderSchedule(games){
     h+=`<tr class="week-row"><td colspan="6">Week ${w}</td></tr>`;
     weeks[w].forEach(g=>{
       const played=isPlayed(g);
-      const aName=teamNameLink(g.away_team), hName=teamNameLink(g.home_team);
+      // Vortex Unit is always boxed: yellow if we won, white if we lost, plain until it's played
+      const result=played?(determineWinnerJs(g)===VORTEX?' won':' lost'):'';
+      const nameCell=t=>t===VORTEX?`<span class="vu-ring${result}">${esc(t)}</span>`:teamNameLink(t);
+      const aName=nameCell(g.away_team), hName=nameCell(g.home_team);
       let al=aName, hl=hName;
       if(played){
         if(g.away_score!==null&&g.home_score!==null){
