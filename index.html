@@ -83,6 +83,8 @@ tr.editable-row td input{width:52px}
 .pp-head{display:flex;flex-wrap:wrap;align-items:flex-end;gap:10px 24px;margin-bottom:14px}
 .pp-name{font-size:30px;font-weight:800;margin:0;line-height:1.1}
 .pp-sub{color:var(--sub);font-size:13px;margin-top:4px}
+.pp-leads{display:flex;flex-wrap:wrap;gap:6px;margin-top:10px}
+.pp-lead{font-size:11px;font-weight:700;letter-spacing:.03em;text-transform:uppercase;color:var(--yellow);border:1px solid var(--yellow);background:rgba(245,197,24,.1);border-radius:20px;padding:3px 10px}
 .pp-tiles{display:grid;grid-template-columns:repeat(auto-fit,minmax(92px,1fr));gap:10px}
 .pp-tile{background:var(--bg);border:1px solid var(--line);border-radius:10px;padding:10px 12px}
 .pp-tile b{display:block;font-size:20px;font-variant-numeric:tabular-nums}
@@ -144,6 +146,11 @@ input[type=number]::-webkit-inner-spin-button,input[type=number]::-webkit-outer-
 .score-box b{color:var(--sub);font-weight:600;min-width:1.4em;text-align:center}
 .score-box b.win{color:var(--yellow);font-weight:800}
 .score-box .dash{color:var(--sub)}
+.score-edit{padding:2px 4px;gap:4px}
+#enter-container td:last-child{overflow:visible;text-overflow:clip}
+.score-edit .score-input{width:44px;text-align:center;font-weight:700;border-color:transparent;background:transparent}
+.score-edit .score-input:hover{border-color:var(--line)}
+.score-edit .score-input:focus{border-color:var(--accent);background:var(--card)}
 .vu-ring{display:inline-block;padding:1px 8px;border:2px solid var(--line);border-radius:6px;font-weight:700}
 .vu-ring.won{border-color:var(--yellow);color:var(--yellow)}
 .vu-ring.lost{border-color:var(--ink);color:var(--ink)}
@@ -327,7 +334,7 @@ input[type=number]::-webkit-inner-spin-button,input[type=number]::-webkit-outer-
 </div>
 
 <script>
-window.VU_PUBLIC={updated:"20260925092302",updatedText:"Sep 25, 2026 9:23 AM"};
+window.VU_PUBLIC={updated:"20260925092754",updatedText:"Sep 25, 2026 9:27 AM"};
 (function(){
   const realFetch=window.fetch.bind(window);
   const routes=[
@@ -687,9 +694,10 @@ document.getElementById('team-modal-overlay').addEventListener('click',e=>{
 // clicking a team. Score boxes then show W / L.
 function renderEnter(games){
   const weeks=groupByWeek(games);
-  let h=`<table class="grid-fixed"><colgroup><col style="width:150px"><col style="width:190px"><col style="width:64px">
-      <col style="width:28px"><col style="width:64px"><col style="width:190px"><col style="width:90px"><col style="width:130px"></colgroup>
-    <thead><tr><th>When</th><th>Away</th><th></th><th></th><th></th><th>Home</th><th></th><th></th></tr></thead><tbody>`;
+  // same scoreboard layout as the Schedule: away (right-aligned) | score boxes | home
+  let h=`<table class="grid-fixed sched"><colgroup><col style="width:60px"><col style="width:80px"><col style="width:110px">
+      <col><col style="width:136px"><col><col style="width:90px"><col style="width:132px"></colgroup>
+    <thead><tr><th>Date</th><th>Time</th><th>Location</th><th class="sched-away">Away</th><th class="sched-mid"></th><th>Home</th><th></th><th></th></tr></thead><tbody>`;
   Object.keys(weeks).sort((a,b)=>a-b).forEach(w=>{
     h+=`<tr class="week-row"><td colspan="8">Week ${w}</td></tr>`;
     weeks[w].forEach(g=>{
@@ -697,11 +705,12 @@ function renderEnter(games){
       const as=g.away_score!==null?g.away_score:'';
       const hs=g.home_score!==null?g.home_score:'';
       h+=`<tr data-id="${g.id}" data-winner="${esc(g.winner||'')}" data-away="${esc(g.away_team)}" data-home="${esc(g.home_team)}">
-        <td class="muted">${g.date_disp} ${g.time}</td>
-        <td><span class="team-pick" data-side="away" title="Click to mark as the winner">${esc(g.away_team)}</span></td>
-        <td><input class="score-input" type="number" min="0" value="${as}" data-side="away"></td>
-        <td class="muted">@</td>
-        <td><input class="score-input" type="number" min="0" value="${hs}" data-side="home"></td>
+        <td>${g.date_disp}</td><td class="muted">${g.time}</td>
+        <td class="muted">${esc(g.location||'')}</td>
+        <td class="sched-away"><span class="team-pick" data-side="away" title="Click to mark as the winner">${esc(g.away_team)}</span></td>
+        <td class="sched-mid"><span class="score-box score-edit">
+          <input class="score-input" type="number" min="0" value="${as}" data-side="away"><span class="dash">&ndash;</span><input class="score-input" type="number" min="0" value="${hs}" data-side="home">
+        </span></td>
         <td><span class="team-pick" data-side="home" title="Click to mark as the winner">${esc(g.home_team)}</span></td>
         <td><span class="played-tag ${played?'done':''}">${played?'Played':'Unplayed'}</span></td>
         <td><button class="save-btn">Save</button><span class="saved-flag">Saved ✓</span></td>
@@ -2027,6 +2036,7 @@ function renderPlayerPage(){
       <div class="pp-sub"><span style="color:${P.player.active?'var(--win)':'var(--loss)'}">${P.player.active?'Active':'Inactive'}</span>
         &middot; ${seasonsPlayed.length} season${seasonsPlayed.length===1?'':'s'}${seasonsPlayed.length?` (${esc(seasonsPlayed[0])}${seasonsPlayed.length>1?' – '+esc(seasonsPlayed[seasonsPlayed.length-1]):''})`:''}
         ${career?`&middot; career <b style="color:var(--ink)">${ppFmt(career.player.ba,3)}/${ppFmt(career.player.obp,3)}/${ppFmt(career.player.slg,3)}</b>`:''}</div>
+      ${career&&career.leads&&career.leads.length?`<div class="pp-leads">${career.leads.map(l=>`<span class="pp-lead">&#9733; ${esc(l)}</span>`).join('')}</div>`:''}
     </div></div>`;
   if(!scope){ body.innerHTML=h+'<p class="muted">No stats recorded yet.</p></div>'; return; }
   h+=`<div class="pill-bar" id="pp-scopes">${P.scopes.map(s=>
