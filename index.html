@@ -138,6 +138,12 @@ tr.editable-row td input{width:52px}
 .score-input.wl-loss::placeholder{color:var(--loss);font-weight:700;opacity:1}
 input[type=number]{-moz-appearance:textfield;appearance:textfield}
 input[type=number]::-webkit-inner-spin-button,input[type=number]::-webkit-outer-spin-button{-webkit-appearance:none;margin:0}
+.sched .sched-away{text-align:right}
+.sched .sched-mid{text-align:center}
+.score-box{display:inline-flex;align-items:center;gap:6px;padding:2px 10px;border:1px solid var(--line);border-radius:6px;background:var(--bg);font-variant-numeric:tabular-nums;font-size:13px}
+.score-box b{color:var(--sub);font-weight:600;min-width:1.4em;text-align:center}
+.score-box b.win{color:var(--yellow);font-weight:800}
+.score-box .dash{color:var(--sub)}
 .vu-ring{display:inline-block;padding:1px 8px;border:2px solid var(--line);border-radius:6px;font-weight:700}
 .vu-ring.won{border-color:var(--yellow);color:var(--yellow)}
 .vu-ring.lost{border-color:var(--ink);color:var(--ink)}
@@ -321,7 +327,7 @@ input[type=number]::-webkit-inner-spin-button,input[type=number]::-webkit-outer-
 </div>
 
 <script>
-window.VU_PUBLIC={updated:"20260925091902",updatedText:"Sep 25, 2026 9:19 AM"};
+window.VU_PUBLIC={updated:"20260925092004",updatedText:"Sep 25, 2026 9:20 AM"};
 (function(){
   const realFetch=window.fetch.bind(window);
   const routes=[
@@ -490,34 +496,33 @@ let _standData=[];
 
 // ─── schedule ───────────────────────────────────────────────────────────────
 function renderSchedule(games){
-  // one table for the whole season so every week's columns line up
+  // one table for the whole season so every week's columns line up; scoreboard style:
+  // away team (right-aligned) | score | home team (left-aligned)
   const weeks=groupByWeek(games);
-  let h=`<table class="grid-fixed"><colgroup><col style="width:70px"><col style="width:90px"><col style="width:120px">
-      <col><col style="width:36px"><col></colgroup>
-    <thead><tr><th>Date</th><th>Time</th><th>Location</th><th>Away</th><th></th><th>Home</th></tr></thead><tbody>`;
+  let h=`<table class="grid-fixed sched"><colgroup><col style="width:70px"><col style="width:90px"><col style="width:120px">
+      <col><col style="width:104px"><col></colgroup>
+    <thead><tr><th>Date</th><th>Time</th><th>Location</th><th class="sched-away">Away</th><th class="sched-mid"></th><th>Home</th></tr></thead><tbody>`;
   Object.keys(weeks).sort((a,b)=>a-b).forEach(w=>{
     h+=`<tr class="week-row"><td colspan="6">Week ${w}</td></tr>`;
     weeks[w].forEach(g=>{
-      const played=isPlayed(g);
+      const played=isPlayed(g), winner=played?determineWinnerJs(g):null;
       // Vortex Unit is always boxed: yellow if we won, white if we lost, plain until it's played
-      const result=played?(determineWinnerJs(g)===VORTEX?' won':' lost'):'';
-      const nameCell=t=>t===VORTEX?`<span class="vu-ring${result}">${esc(t)}</span>`:teamNameLink(t);
-      const aName=nameCell(g.away_team), hName=nameCell(g.home_team);
-      let al=aName, hl=hName;
-      if(played){
-        if(g.away_score!==null&&g.home_score!==null){
-          const aw=g.away_score>g.home_score, hw=g.home_score>g.away_score;
-          al=`<span class="${aw?'winner':''}">${aName} ${g.away_score}</span>`;
-          hl=`<span class="${hw?'winner':''}">${g.home_score} ${hName}</span>`;
-        } else if(g.winner){
-          al=`<span class="${g.winner===g.away_team?'winner':''}">${aName}</span>`;
-          hl=`<span class="${g.winner===g.home_team?'winner':''}">${hName}</span>`;
-        }
+      const result=played?(winner===VORTEX?' won':' lost'):'';
+      const nameCell=t=>{
+        const n=t===VORTEX?`<span class="vu-ring${result}">${esc(t)}</span>`:teamNameLink(t);
+        return winner===t&&t!==VORTEX?`<span class="winner">${n}</span>`:n;
+      };
+      let mid='<span class="muted">@</span>';
+      if(played&&g.away_score!==null&&g.home_score!==null){
+        const aw=g.away_score>g.home_score, hw=g.home_score>g.away_score;
+        mid=`<span class="score-box"><b class="${aw?'win':''}">${g.away_score}</b><span class="dash">&ndash;</span><b class="${hw?'win':''}">${g.home_score}</b></span>`;
+      } else if(played){
+        mid='<span class="score-box muted">Final</span>';
       }
       h+=`<tr>
         <td>${g.date_disp}</td><td class="muted">${g.time}</td>
         <td class="muted">${esc(g.location||'')}</td>
-        <td>${al}</td><td class="muted">at</td><td>${hl}</td>
+        <td class="sched-away">${nameCell(g.away_team)}</td><td class="sched-mid">${mid}</td><td>${nameCell(g.home_team)}</td>
       </tr>`;
     });
   });
