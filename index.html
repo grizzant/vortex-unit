@@ -84,6 +84,8 @@ tr.editable-row td input{width:52px}
 .pp-name{font-size:30px;font-weight:800;margin:0;line-height:1.1}
 .pp-sub{color:var(--sub);font-size:13px;margin-top:4px}
 .pp-leads{display:flex;flex-wrap:wrap;gap:6px;margin-top:10px}
+.pp-hof{background:var(--yellow)!important;color:#1a1528!important}
+.hof-badge{font-size:10px;font-weight:800;letter-spacing:.04em;color:#1a1528;background:var(--yellow);border-radius:10px;padding:1px 7px;margin-left:8px;vertical-align:middle}
 .pp-lead{font-size:11px;font-weight:700;letter-spacing:.03em;text-transform:uppercase;color:var(--yellow);border:1px solid var(--yellow);background:rgba(245,197,24,.1);border-radius:20px;padding:3px 10px}
 .pp-tiles{display:grid;grid-template-columns:repeat(auto-fit,minmax(92px,1fr));gap:10px}
 .pp-tile{background:var(--bg);border:1px solid var(--line);border-radius:10px;padding:10px 12px}
@@ -334,7 +336,7 @@ input[type=number]::-webkit-inner-spin-button,input[type=number]::-webkit-outer-
 </div>
 
 <script>
-window.VU_PUBLIC={updated:"20260925092807",updatedText:"Sep 25, 2026 9:28 AM"};
+window.VU_PUBLIC={updated:"20260925093417",updatedText:"Sep 25, 2026 9:34 AM"};
 (function(){
   const realFetch=window.fetch.bind(window);
   const routes=[
@@ -1899,7 +1901,7 @@ function renderPlayersTable(){
   _players.filter(p=>filt==='all'||(filt==='active')===!!p.active).forEach(p=>{
     const expanded=_expandedPlayer===p.id;
     h+=`<tr data-pid="${p.id}" class="player-row" style="cursor:pointer">
-      <td><a class="player-link" data-pid="${p.id}">${esc(p.name)}</a></td>
+      <td><a class="player-link" data-pid="${p.id}">${esc(p.name)}</a>${p.hall_of_fame?'<span class="hof-badge" title="Vortex Unit Hall of Fame">HOF</span>':''}</td>
       <td>${p.g??0}</td>
       <td>${p.seasons??0}</td>
       <td><span style="color:${p.active?'var(--win)':'var(--loss)'}">${p.active?'Active':'Inactive'}</span></td>
@@ -1907,6 +1909,9 @@ function renderPlayersTable(){
         <button class="btn btn-sm toggle-active-btn" data-pid="${p.id}" data-active="${p.active}">
           ${p.active?'Deactivate':'Activate'}
         </button>
+        ${p.hall_of_fame
+          ?`<button class="btn btn-sm btn-danger hof-btn" data-pid="${p.id}" data-hof="1">Remove from HOF</button>`
+          :!p.active?`<button class="btn btn-sm hof-btn" data-pid="${p.id}" data-hof="0">Add to Hall of Fame</button>`:''}
       </td>
     </tr>`;
     if(expanded){
@@ -1924,6 +1929,20 @@ function renderPlayersTable(){
       _expandedPlayer=_expandedPlayer===pid?null:pid;
       renderPlayersTable();
       if(_expandedPlayer===pid) loadPlayerExpand(pid);
+    });
+  });
+  // Hall of Fame: can only be granted to inactive players, but it sticks if they're reactivated
+  document.querySelectorAll('.hof-btn').forEach(btn=>{
+    btn.addEventListener('click',async(e)=>{
+      e.stopPropagation();
+      const pid=parseInt(btn.dataset.pid), inducted=btn.dataset.hof==='1';
+      const name=(_players.find(x=>x.id===pid)||{}).name||'this player';
+      if(inducted&&!confirm(`Remove ${name} from the Vortex Unit Hall of Fame?`)) return;
+      await fetch('/api/players/'+pid,{
+        method:'PUT',headers:{'Content-Type':'application/json'},
+        body:JSON.stringify({hall_of_fame:inducted?0:1})
+      });
+      await loadPlayers();
     });
   });
   document.querySelectorAll('.toggle-active-btn').forEach(btn=>{
@@ -2036,7 +2055,9 @@ function renderPlayerPage(){
       <div class="pp-sub"><span style="color:${P.player.active?'var(--win)':'var(--loss)'}">${P.player.active?'Active':'Inactive'}</span>
         &middot; ${seasonsPlayed.length} season${seasonsPlayed.length===1?'':'s'}${seasonsPlayed.length?` (${esc(seasonsPlayed[0])}${seasonsPlayed.length>1?' – '+esc(seasonsPlayed[seasonsPlayed.length-1]):''})`:''}
         ${career?`&middot; career <b style="color:var(--ink)">${ppFmt(career.player.ba,3)}/${ppFmt(career.player.obp,3)}/${ppFmt(career.player.slg,3)}</b>`:''}</div>
-      ${career&&career.leads&&career.leads.length?`<div class="pp-leads">${career.leads.map(l=>`<span class="pp-lead">&#9733; ${esc(l)}</span>`).join('')}</div>`:''}
+      ${P.player.hall_of_fame||(career&&career.leads&&career.leads.length)?`<div class="pp-leads">${
+        P.player.hall_of_fame?'<span class="pp-lead pp-hof">&#127942; Vortex Unit Hall of Fame</span>':''}${
+        (career?career.leads:[]).map(l=>`<span class="pp-lead">&#9733; ${esc(l)}</span>`).join('')}</div>`:''}
     </div></div>`;
   if(!scope){ body.innerHTML=h+'<p class="muted">No stats recorded yet.</p></div>'; return; }
   h+=`<div class="pill-bar" id="pp-scopes">${P.scopes.map(s=>
