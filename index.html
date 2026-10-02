@@ -210,6 +210,9 @@ input[type=number]::-webkit-inner-spin-button,input[type=number]::-webkit-outer-
 .h2h-row td.result-w{color:var(--win);font-weight:700}
 .h2h-row td.result-l{color:var(--loss);font-weight:700}
 .modal-formula{font-size:11px;color:var(--sub);margin-top:14px;line-height:1.5}
+.tb-owner{font-size:13px;margin:0 0 10px;line-height:1.5}
+.tb-us{color:var(--win);font-weight:700}
+.tb-them{color:var(--loss);font-weight:700}
 </style>
 </head>
 <body>
@@ -422,7 +425,7 @@ input[type=number]::-webkit-inner-spin-button,input[type=number]::-webkit-outer-
 </div>
 
 <script>
-window.VU_PUBLIC={updated:"20261002122010",updatedText:"Oct 2, 2026 12:20 PM"};
+window.VU_PUBLIC={updated:"20261002122550",updatedText:"Oct 2, 2026 12:25 PM"};
 (function(){
   const realFetch=window.fetch.bind(window);
   const routes=[
@@ -723,6 +726,36 @@ function buildMatchup(games, standings, opponent){
   return {opponent,usStand,themStand,pUs,pThem,h2h,h2hW,h2hL,h2hPct,commonOpponents,pLog5,finalPct};
 }
 
+// League tiebreakers between us and one opponent, in order, as things stand now.
+// Each row: {name, us, them, winner} with winner = VORTEX, the opponent, or null when level.
+function buildTiebreakers(m){
+  const us=m.usStand||{}, them=m.themStand||{};
+  let diff=0, scored=0;                       // head-to-head runs, from our side
+  m.h2h.forEach(g=>{
+    if(g.away_score===null||g.home_score===null) return;
+    scored++;
+    diff+=(g.home_team===VORTEX?1:-1)*(g.home_score-g.away_score);
+  });
+  const forfeits=t=>_games.filter(g=>g.away_score===null&&g.home_score===null&&g.winner
+    &&(g.home_team===t||g.away_team===t)&&g.winner!==t).length;
+  const num=v=>v===undefined?0:v;
+  // sign>0: higher is better, sign<0: lower is better
+  const row=(name,a,b,sign,fmt=String)=>({name,us:fmt(a),them:fmt(b),winner:a===b?null:((a-b)*sign>0?VORTEX:m.opponent)});
+  const played=m.h2h.length>0;
+  return [
+    row('Winning Percentage',m.pUs,m.pThem,1,v=>v.toFixed(3)),
+    played?{...row('Head-To-Head',m.h2hW,m.h2hL,1),us:`${m.h2hW}-${m.h2hL}`,them:`${m.h2hL}-${m.h2hW}`}
+          :{name:'Head-To-Head',us:'-',them:'-',winner:null,note:'Not played yet'},
+    scored?row('Head-To-Head Differential',diff,-diff,1,fmtDiff)
+          :{name:'Head-To-Head Differential',us:'-',them:'-',winner:null,note:played?'No score':'Not played yet'},
+    row('Total Runs For',num(us.rf),num(them.rf),1),
+    row('Total Runs Against',num(us.ra),num(them.ra),-1),
+    row('Total Runs Differential',num(us.diff),num(them.diff),1,fmtDiff),
+    row('Lowest Number of Forfeits',forfeits(VORTEX),forfeits(m.opponent),-1),
+    {name:'Coin Toss',us:'-',them:'-',winner:null,note:'-'},
+  ];
+}
+
 function openTeamModal(opponent){
   const m=buildMatchup(_games,_standings,opponent);
   const usPct=Math.round(m.finalPct*100), themPct=100-usPct;
@@ -774,6 +807,22 @@ function openTeamModal(opponent){
     });
     h+=`</tbody></table>`;
   }
+
+  const tb=buildTiebreakers(m);
+  const owner=from=>{const i=tb.findIndex((r,j)=>j>=from&&r.winner); return i<0?null:{level:i+1,...tb[i]};};
+  const ownLine=o=>`<b class="${o.winner===VORTEX?'tb-us':'tb-them'}">${esc(o.winner)}</b> owns the tiebreaker, decided at level ${o.level}: ${o.name}`;
+  const first=owner(0), tied=owner(1);
+  h+=`<div class="modal-section-title">Tiebreakers</div><p class="tb-owner">`;
+  if(!first) h+=`Dead even through every tiebreaker &mdash; it would come down to level 8: Coin Toss`;
+  else if(first.level>1) h+=ownLine(first);
+  else h+=ownLine(first)+`<br><span class="muted">If the two finish level on winning percentage: `+
+    (tied?`<b class="${tied.winner===VORTEX?'tb-us':'tb-them'}">${esc(tied.winner)}</b> owns it at level ${tied.level}: ${tied.name}`:`it comes down to level 8: Coin Toss`)+`</span>`;
+  h+=`</p><table><thead><tr><th>#</th><th>Tiebreaker</th><th>${esc(VORTEX)}</th><th>${esc(opponent)}</th><th>Winner</th></tr></thead><tbody>`;
+  tb.forEach((r,i)=>{
+    h+=`<tr><td class="muted">${i+1}</td><td>${r.name}</td><td>${r.us}</td><td>${r.them}</td>
+      <td class="${r.winner?(r.winner===VORTEX?'tb-us':'tb-them'):'muted'}">${r.winner?esc(r.winner):(r.note||'Tied')}</td></tr>`;
+  });
+  h+=`</tbody></table><p class="modal-formula" style="margin-top:8px">As things stand today; every level can still change while either team has games left.</p>`;
 
   h+=`<p class="modal-formula">Estimate blends overall winning pct (Log5 method), head-to-head results this season (weight grows with games played), and records against shared opponents. More history against ${esc(opponent)} and common opponents makes the number more reliable.</p>`;
 
