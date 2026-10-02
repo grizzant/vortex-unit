@@ -55,6 +55,25 @@ tr:last-child td{border-bottom:none}
 .clinch-legend{font-size:11px;margin:10px 0 0}
 .clinch-legend .clinch-tag{margin:0 4px 0 12px}
 .clinch-legend .clinch-tag:first-child{margin-left:0}
+.po-wrap{margin-top:26px}
+.po-sub{font-size:12px;margin:-4px 0 14px}
+.po-bracket{display:grid;grid-template-columns:minmax(0,1fr) 22px 16px minmax(0,1fr);max-width:640px}
+.po-semis{display:flex;flex-direction:column;gap:14px}
+.po-join{display:flex;flex-direction:column}
+.po-join i{flex:1}
+.po-join b{flex:2;border:2px solid var(--line);border-left:none;border-radius:0 6px 6px 0}
+.po-line{align-self:center;height:2px;background:var(--line)}
+.po-final{align-self:center}
+.po-match{border:1px solid var(--line);border-radius:10px;background:#15121f;overflow:hidden}
+.po-round{font-size:10px;font-weight:700;letter-spacing:.06em;text-transform:uppercase;color:var(--sub);padding:6px 10px 0}
+.po-team{display:flex;align-items:center;gap:8px;padding:7px 10px;font-size:13px}
+.po-team+.po-team{border-top:1px solid var(--line)}
+.po-team.vortex .po-name{color:var(--yellow);font-weight:700}
+.po-seed{color:var(--sub);font-size:11px;font-weight:700;min-width:12px}
+.po-name{min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.po-rec{margin-left:auto;color:var(--sub);font-size:12px;white-space:nowrap}
+.po-hunt{font-size:12px;margin:12px 0 0}
+@media(max-width:560px){.po-bracket{grid-template-columns:1fr}.po-join,.po-line{display:none}.po-final{margin-top:14px}}
 .muted{color:var(--sub)}
 .diff-pos{color:var(--win)}
 .diff-neg{color:var(--loss)}
@@ -425,7 +444,7 @@ input[type=number]::-webkit-inner-spin-button,input[type=number]::-webkit-outer-
 </div>
 
 <script>
-window.VU_PUBLIC={updated:"20261002122550",updatedText:"Oct 2, 2026 12:25 PM"};
+window.VU_PUBLIC={updated:"20261002123332",updatedText:"Oct 2, 2026 12:33 PM"};
 (function(){
   const realFetch=window.fetch.bind(window);
   const routes=[
@@ -551,6 +570,32 @@ function standVal(s,key){
   if(key==='sos_remaining'||key==='elim') return v==='-'||v==null?null:Number(v);
   return Number(v);
 }
+// Top bracket if the playoffs started today: seeds 1-4 by standings place (which already
+// follows the league tiebreakers), 1 v 4 and 2 v 3, winners meet in the championship.
+const PLAYOFF_SPOTS=4;
+function playoffPicture(standings){
+  const seeds=[...standings].sort((a,b)=>a.place-b.place);
+  if(seeds.length<PLAYOFF_SPOTS||!seeds.some(s=>s.gp)) return '';
+  const team=n=>{
+    const s=seeds[n-1], v=s.team===VORTEX;
+    return `<div class="po-team ${v?'vortex':''}"><span class="po-seed">${n}</span>
+      <span class="po-name">${v?esc(s.team):`<span class="team-link" data-team="${esc(s.team)}">${esc(s.team)}</span>`}</span>
+      ${s.clinch?`<span class="clinch-tag ${s.clinch}" style="margin-left:0" title="${CLINCH_TEXT[s.clinch]}">${s.clinch}</span>`:''}
+      <span class="po-rec">${s.w}-${s.l}</span></div>`;
+  };
+  const semi=(a,b)=>`<div class="po-match"><div class="po-round">Semifinal</div>${team(a)}${team(b)}</div>`;
+  const tbd=(a,b)=>`<div class="po-team"><span class="po-name muted">Winner of ${a} / ${b}</span></div>`;
+  const hunt=seeds.slice(PLAYOFF_SPOTS).filter(s=>s.clinch!=='e');
+  return `<div class="po-wrap"><p class="section-heading">Playoff Picture</p>
+    <p class="muted po-sub">If the playoffs started today &mdash; top ${PLAYOFF_SPOTS} bracket</p>
+    <div class="po-bracket">
+      <div class="po-semis">${semi(1,4)}${semi(2,3)}</div>
+      <div class="po-join"><i></i><b></b><i></i></div><div class="po-line"></div>
+      <div class="po-final"><div class="po-match"><div class="po-round">Championship</div>${tbd(1,4)}${tbd(2,3)}</div></div>
+    </div>
+    ${hunt.length?`<p class="muted po-hunt">Still alive: ${hunt.map(s=>`${esc(s.team)} (${s.w}-${s.l}${s.elim!=null&&s.elim!=='-'?', E# '+s.elim:''})`).join(', ')}</p>`:''}
+  </div>`;
+}
 const CLINCH_TEXT={z:'Clinched 1 seed',x:'Clinched playoffs',e:'Eliminated'};   // top 4 make the playoffs
 function renderStandings(standings){
   if(standings) _standData=standings;
@@ -585,6 +630,7 @@ function renderStandings(standings){
   });
   h+='</tbody></table>';
   if(sorted.some(s=>s.clinch||(s.elim??'-')!=='-')) h+='<p class="muted clinch-legend">'+Object.entries(CLINCH_TEXT).map(([k,t])=>`<span class="clinch-tag ${k}">${k}</span>${t}`).join('')+'<b style="margin:0 4px 0 12px">E#</b>Elimination number: their losses plus wins by the team they are chasing for the last spot that knock them out</p>';
+  if(!_standArchived) h+=playoffPicture(_standData);
   const box=document.getElementById('standings-container');
   box.innerHTML=h;
   box.querySelectorAll('th[data-col]').forEach(th=>th.addEventListener('click',()=>{
