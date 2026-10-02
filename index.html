@@ -49,6 +49,12 @@ tr:last-child td{border-bottom:none}
 .played-tag{font-size:11px;padding:2px 7px;border-radius:20px;background:#2a2540;color:var(--sub)}
 .played-tag.done{background:#1e3a2a;color:var(--win)}
 .team-cell.vortex{color:var(--yellow);font-weight:700}
+.clinch-tag{display:inline-block;font-size:10px;font-weight:800;line-height:1;padding:2px 5px;border-radius:4px;margin-left:6px;vertical-align:middle;background:#1e3a2a;color:var(--win)}
+.clinch-tag.z{background:var(--yellow);color:#1a1528}
+.clinch-tag.e{background:#3a2026;color:var(--loss)}
+.clinch-legend{font-size:11px;margin:10px 0 0}
+.clinch-legend .clinch-tag{margin:0 4px 0 12px}
+.clinch-legend .clinch-tag:first-child{margin-left:0}
 .muted{color:var(--sub)}
 .diff-pos{color:var(--win)}
 .diff-neg{color:var(--loss)}
@@ -416,7 +422,7 @@ input[type=number]::-webkit-inner-spin-button,input[type=number]::-webkit-outer-
 </div>
 
 <script>
-window.VU_PUBLIC={updated:"20261002120628",updatedText:"Oct 2, 2026 12:06 PM"};
+window.VU_PUBLIC={updated:"20261002121055",updatedText:"Oct 2, 2026 12:10 PM"};
 (function(){
   const realFetch=window.fetch.bind(window);
   const routes=[
@@ -541,6 +547,7 @@ function standVal(s,key){
   if(key==='sos_remaining') return v==='-'?null:Number(v);
   return Number(v);
 }
+const CLINCH_TEXT={z:'Clinched 1 seed',x:'Clinched playoffs',e:'Eliminated'};   // top 4 make the playoffs
 function renderStandings(standings){
   if(standings) _standData=standings;
   const {key,desc}=_standSort;
@@ -563,7 +570,7 @@ function renderStandings(standings){
     const teamLabel=v?esc(s.team):`<span class="team-link" data-team="${esc(s.team)}">${esc(s.team)}</span>`;
     h+=`<tr>
       <td class="muted">${s.place}</td>
-      <td class="team-cell ${v?'vortex':''}">${teamLabel}</td>
+      <td class="team-cell ${v?'vortex':''}">${teamLabel}${s.clinch?`<span class="clinch-tag ${s.clinch}" title="${CLINCH_TEXT[s.clinch]}">${s.clinch}</span>`:''}</td>
       <td>${s.w}</td><td>${s.l}</td><td>${s.pct.toFixed(3)}</td><td>${s.gb}</td><td>${s.gp}</td>
       <td>${s.rf}</td><td>${s.ra}</td>
       <td class="${dc}">${s.diff>0?'+':''}${s.diff}</td>
@@ -572,6 +579,7 @@ function renderStandings(standings){
     </tr>`;
   });
   h+='</tbody></table>';
+  if(sorted.some(s=>s.clinch)) h+='<p class="muted clinch-legend">'+Object.entries(CLINCH_TEXT).map(([k,t])=>`<span class="clinch-tag ${k}">${k}</span>${t}`).join('')+'</p>';
   const box=document.getElementById('standings-container');
   box.innerHTML=h;
   box.querySelectorAll('th[data-col]').forEach(th=>th.addEventListener('click',()=>{
