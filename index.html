@@ -422,7 +422,7 @@ input[type=number]::-webkit-inner-spin-button,input[type=number]::-webkit-outer-
 </div>
 
 <script>
-window.VU_PUBLIC={updated:"20261002121055",updatedText:"Oct 2, 2026 12:10 PM"};
+window.VU_PUBLIC={updated:"20261002121550",updatedText:"Oct 2, 2026 12:15 PM"};
 (function(){
   const realFetch=window.fetch.bind(window);
   const routes=[
@@ -536,15 +536,16 @@ function makeSortable(tbodyId, data, renderRow, defaultCol, defaultDesc=true){
 let _standSort={key:'place',desc:false};
 const STAND_COLS=[
   ['place','#'],['team','Team'],['w','W'],['l','L'],['pct','PCT'],['gb','GB'],['gp','GP'],
-  ['rf','RF'],['ra','RA'],['diff','Diff'],['streak','Streak'],['sos_remaining','SOS Left'],
+  ['rf','RF'],['ra','RA'],['diff','Diff'],['streak','Streak'],['sos_remaining','SOS Left'],['elim','E#'],
 ];
+const STAND_TIPS={elim:'Elimination number: this many of their own losses plus wins by the team they are chasing for the last playoff spot and they are out'};
 // sortable value per column ('--' GB = 0 games back, 'Won 3' = +3, 'Lost 2' = -2, no SOS = last)
 function standVal(s,key){
   const v=s[key];
   if(key==='team') return v.toLowerCase();
   if(key==='gb') return v==='--'?0:Number(v);
   if(key==='streak'){const m=/^(Won|Lost) (\d+)/.exec(v); return m?(m[1]==='Won'?1:-1)*Number(m[2]):null;}
-  if(key==='sos_remaining') return v==='-'?null:Number(v);
+  if(key==='sos_remaining'||key==='elim') return v==='-'||v==null?null:Number(v);
   return Number(v);
 }
 const CLINCH_TEXT={z:'Clinched 1 seed',x:'Clinched playoffs',e:'Eliminated'};   // top 4 make the playoffs
@@ -561,7 +562,7 @@ function renderStandings(standings){
   });
   let h='<table><thead><tr>';
   STAND_COLS.forEach(([k,label])=>{
-    h+=`<th data-col="${k}" title="Click to sort">${label}<span class="sort-arrow">${key===k?(desc?'▼':'▲'):''}</span></th>`;
+    h+=`<th data-col="${k}" title="${STAND_TIPS[k]?STAND_TIPS[k]+'. ':''}Click to sort">${label}<span class="sort-arrow">${key===k?(desc?'▼':'▲'):''}</span></th>`;
   });
   h+='</tr></thead><tbody>';
   sorted.forEach(s=>{
@@ -576,16 +577,17 @@ function renderStandings(standings){
       <td class="${dc}">${s.diff>0?'+':''}${s.diff}</td>
       <td>${s.streak}</td>
       <td>${s.sos_remaining==='-'?'-':Number(s.sos_remaining).toFixed(3)}</td>
+      <td>${s.elim??'-'}</td>
     </tr>`;
   });
   h+='</tbody></table>';
-  if(sorted.some(s=>s.clinch)) h+='<p class="muted clinch-legend">'+Object.entries(CLINCH_TEXT).map(([k,t])=>`<span class="clinch-tag ${k}">${k}</span>${t}`).join('')+'</p>';
+  if(sorted.some(s=>s.clinch||(s.elim??'-')!=='-')) h+='<p class="muted clinch-legend">'+Object.entries(CLINCH_TEXT).map(([k,t])=>`<span class="clinch-tag ${k}">${k}</span>${t}`).join('')+'<b style="margin:0 4px 0 12px">E#</b>Elimination number: their losses plus wins by the team they are chasing for the last spot that knock them out</p>';
   const box=document.getElementById('standings-container');
   box.innerHTML=h;
   box.querySelectorAll('th[data-col]').forEach(th=>th.addEventListener('click',()=>{
     const k=th.dataset.col;
     if(_standSort.key===k) _standSort.desc=!_standSort.desc;
-    else _standSort={key:k,desc:!['place','team','l','ra','gb','sos_remaining'].includes(k)};  // best-first
+    else _standSort={key:k,desc:!['place','team','l','ra','gb','sos_remaining','elim'].includes(k)};  // best-first
     renderStandings();
   }));
   if(_standArchived) stripTeamLinks(box);
