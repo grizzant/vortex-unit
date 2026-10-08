@@ -232,6 +232,59 @@ input[type=number]::-webkit-inner-spin-button,input[type=number]::-webkit-outer-
 .tb-owner{font-size:13px;margin:0 0 10px;line-height:1.5}
 .tb-us{color:var(--win);font-weight:700}
 .tb-them{color:var(--loss);font-weight:700}
+/* leaders / record book / milestones / box scores */
+.hot-flame{margin-left:4px;font-size:.9em;cursor:help;font-weight:400}
+.hub-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(240px,1fr));gap:12px}
+.hub-note{font-size:11px;margin:12px 0 0;line-height:1.5}
+.lb-card{background:var(--bg);border:1px solid var(--line);border-radius:10px;padding:12px 14px}
+.lb-title{display:flex;justify-content:space-between;gap:8px;font-size:11px;font-weight:700;letter-spacing:.06em;text-transform:uppercase;color:var(--sub);margin:0 0 6px}
+.lb-title span{font-weight:400;letter-spacing:0;text-transform:none;opacity:.8}
+.lb-row{display:grid;grid-template-columns:16px minmax(0,1fr) auto;gap:8px;align-items:baseline;padding:4px 0;font-size:13px}
+.lb-row .rk{color:var(--sub);font-size:11px;font-weight:700}
+.lb-row .nm small{display:block;color:var(--sub);font-size:11px;font-weight:400;white-space:normal;margin-top:3px;line-height:1.5}
+.lb-row .v{font-variant-numeric:tabular-nums;font-weight:700}
+.lb-row.first .nm{font-size:15px}
+.lb-row.first .v{color:var(--yellow);font-size:19px}
+.lb-empty{color:var(--sub);font-size:12px;margin:6px 0 0}
+.hot-list{display:grid;grid-template-columns:repeat(auto-fill,minmax(220px,1fr));gap:12px}
+.hot-item{background:linear-gradient(135deg,rgba(255,120,40,.16),rgba(245,197,24,.06));border:1px solid #6b3a1c;border-radius:10px;padding:10px 14px;font-size:14px}
+.hot-item b{display:block;font-size:17px;margin:2px 0;font-variant-numeric:tabular-nums}
+.hot-item span.muted{font-size:11px}
+.box-link{color:inherit;cursor:pointer;text-decoration:underline dotted;text-underline-offset:3px}
+.box-link:hover{color:var(--accent)}
+.box-row .score-box{border-color:var(--accent)}
+.rec-table td{white-space:normal;vertical-align:top;padding:9px}
+.rec-label{color:var(--sub);font-size:12px;width:24%}
+.rec-val{font-size:17px;font-weight:800;color:var(--yellow);font-variant-numeric:tabular-nums;width:64px}
+.rec-holder{font-size:13px;line-height:1.6}
+.rec-more{font-size:11px}
+.aw-table td{white-space:normal;vertical-align:top;line-height:1.6}
+.aw-table small{color:var(--sub);font-variant-numeric:tabular-nums}
+.hof-plaque{background:linear-gradient(160deg,rgba(245,197,24,.14),rgba(245,197,24,.02));border:1px solid var(--yellow);border-radius:12px;padding:18px 20px}
+.hof-plaque h3{margin:0;font-size:22px}
+.hof-plaque .pp-tiles{margin:12px 0}
+.ms-card{background:var(--bg);border:1px solid var(--line);border-radius:10px;padding:12px 14px;font-size:13px}
+.ms-card.team{border-color:var(--accent)}
+.ms-top{display:flex;justify-content:space-between;gap:8px;align-items:baseline}
+.ms-eta{font-size:11px;color:var(--sub);white-space:nowrap}
+.ms-eta.next{color:var(--yellow);font-weight:700}
+.ms-need{margin:6px 0 8px}
+.ms-need b{font-size:18px;font-variant-numeric:tabular-nums}
+.ms-bar{height:6px;background:var(--line);border-radius:3px;overflow:hidden;margin-bottom:6px}
+.ms-bar i{display:block;height:100%;background:var(--accent);border-radius:3px}
+.ms-row{display:grid;grid-template-columns:22px minmax(0,1fr);gap:8px;padding:8px 0;border-bottom:1px solid var(--line);font-size:13px}
+.ms-row:last-of-type{border-bottom:none}
+.ms-row .ico{color:var(--yellow)}
+.ms-row .sub{font-size:11px;color:var(--sub);margin-top:2px}
+.feat-chip{display:inline-block;font-size:11px;font-weight:700;border:1px solid var(--yellow);color:var(--yellow);background:rgba(245,197,24,.1);border-radius:20px;padding:2px 9px;margin:0 4px 4px 0}
+.feat-chip.none{border-color:var(--line);color:var(--sub);background:transparent}
+.feat-chip b{margin-right:4px}
+.box-head{display:flex;align-items:center;gap:10px;flex-wrap:wrap}
+.box-res{font-size:12px;font-weight:800;border-radius:6px;padding:2px 8px;background:#1e3a2a;color:var(--win)}
+.box-res.L{background:#3a2026;color:var(--loss)}
+.box-pog{background:rgba(245,197,24,.1);border:1px solid var(--yellow);border-radius:10px;padding:9px 14px;font-size:13px;margin-bottom:14px}
+.box-table td:nth-child(n+4),.box-table th:nth-child(n+4){text-align:right;font-variant-numeric:tabular-nums}
+.box-notes{font-size:13px;line-height:1.7;margin:0;padding-left:18px}
 </style>
 </head>
 <body>
@@ -350,6 +403,18 @@ input[type=number]::-webkit-inner-spin-button,input[type=number]::-webkit-outer-
       <div style="overflow-x:auto"><div id="stats-table"></div></div>
     </div>
   </div>
+  <div id="tab-leaders" class="tab-section">
+    <p class="section-heading">Vortex Unit Leaders</p>
+    <div id="leaders-body"></div>
+  </div>
+  <div id="tab-records" class="tab-section">
+    <p class="section-heading">Record Book</p>
+    <div id="records-body"></div>
+  </div>
+  <div id="tab-milestones" class="tab-section">
+    <p class="section-heading">Milestone Watch</p>
+    <div id="milestones-body"></div>
+  </div>
   <div id="tab-player" class="tab-section">
     <button class="btn btn-sm" id="pp-back" style="margin-bottom:14px">&#8592; Back</button>
     <div id="pp-body"></div>
@@ -436,6 +501,12 @@ input[type=number]::-webkit-inner-spin-button,input[type=number]::-webkit-outer-
     <div id="sync-results"></div>
   </div>
 </div>
+<div id="box-modal-overlay" class="modal-overlay hidden">
+  <div class="modal-box" style="max-width:880px">
+    <button class="modal-close" id="box-modal-close">&times;</button>
+    <div id="box-modal-body"></div>
+  </div>
+</div>
 <div id="team-modal-overlay" class="modal-overlay hidden">
   <div class="modal-box">
     <button class="modal-close" id="team-modal-close">&times;</button>
@@ -444,7 +515,7 @@ input[type=number]::-webkit-inner-spin-button,input[type=number]::-webkit-outer-
 </div>
 
 <script>
-window.VU_PUBLIC={updated:"20261008104645",updatedText:"Oct 8, 2026 10:46 AM"};
+window.VU_PUBLIC={updated:"20261008111657",updatedText:"Oct 8, 2026 11:16 AM"};
 (function(){
   const realFetch=window.fetch.bind(window);
   const routes=[
@@ -452,6 +523,8 @@ window.VU_PUBLIC={updated:"20261008104645",updatedText:"Oct 8, 2026 10:46 AM"};
     [/^\/api\/stats$/,                  ()=>'data/stats/all.json'],
     [/^\/api\/stats\/player\/(\d+)$/,   m=>'data/player-seasons/'+m[1]+'.json'],
     [/^\/api\/player-profile\/(\d+)$/,  m=>'data/profiles/'+m[1]+'.json'],
+    [/^\/api\/boxscore\/(\d+)$/,        m=>'data/boxscores/'+m[1]+'.json'],
+    [/^\/api\/hub$/,                    ()=>'data/hub.json'],
     [/^\/api\/(games|standings)\?season_id=(\d+)$/, m=>'data/'+m[1]+'/'+m[2]+'.json'],
     [/^\/api\/(games|standings|seasons|players|league-seasons)$/, m=>'data/'+m[1]+'.json'],
   ];
@@ -476,7 +549,7 @@ let _autoStats=[];    // current auto-lineup stat pool
 
 // The public GitHub Pages copy sets window.VU_PUBLIC and answers /api/* GETs from static JSON.
 const PUBLIC=!!window.VU_PUBLIC;
-const PUBLIC_TABS=new Set(['standings','schedule','stats']);
+const PUBLIC_TABS=new Set(['standings','schedule','stats','leaders','records','milestones']);
 const TABS = [
   {id:'standings',  label:'Standings'},
   {id:'schedule',   label:'Schedule'},
@@ -484,6 +557,9 @@ const TABS = [
   {id:'lineup',     label:'Lineup'},
   {id:'auto-lineup',label:'Auto Lineup'},
   {id:'stats',      label:'Stats'},
+  {id:'leaders',    label:'Leaders'},
+  {id:'records',    label:'Record Book'},
+  {id:'milestones', label:'Milestones'},
   {id:'stat-entry', label:'Stat Entry'},
   {id:'players',    label:'Players'},
 ];
@@ -501,16 +577,28 @@ function buildNav(){
   });
 }
 // Stat Entry changes what Stats / Players / Auto Lineup should show; each refreshes when next opened
-const _dirty={stats:false,players:false,auto:false};
-function markStatsDirty(){_dirty.stats=_dirty.players=_dirty.auto=true;}
+const _dirty={stats:false,players:false,auto:false,hub:false};
+function markStatsDirty(){_dirty.stats=_dirty.players=_dirty.auto=_dirty.hub=true;}
+// Team history (/api/hub): feeds Leaders, Record Book and Milestones, and the flame next to hot hitters
+// (shown on Lineup, Auto Lineup, Stats and Players only)
+const HUB_TABS=new Set(['leaders','records','milestones']);
+let _hub=null;
+const _hot=new Map();   // player id -> their hot streak
 let _currentTab=null;
 function switchTab(id){
   _currentTab=id;
   document.querySelectorAll('.tab-btn').forEach(b=>b.classList.toggle('active',b.dataset.tab===id));
   document.querySelectorAll('.tab-section').forEach(s=>s.classList.toggle('active',s.id==='tab-'+id));
-  if(id==='stats'&&_dirty.stats){_dirty.stats=false; _allStats={}; loadStatsTable(_statsCurrentSeason);}
-  if(id==='players'&&_dirty.players){_dirty.players=false; loadPlayers();}
-  if(id==='auto-lineup'&&_dirty.auto){_dirty.auto=false; loadAutoStats();}
+  const go=()=>{
+    if(id==='stats'&&_dirty.stats){_dirty.stats=false; _allStats={}; loadStatsTable(_statsCurrentSeason);}
+    if(id==='players'&&_dirty.players){_dirty.players=false; loadPlayers();}
+    if(id==='auto-lineup'&&_dirty.auto){_dirty.auto=false; loadAutoStats();}
+    if(HUB_TABS.has(id)) renderHubTab(id);
+  };
+  // re-read the team history first when it may be stale, so the flames and history tabs are current
+  // (the local app re-reads it every time a history tab opens; the public copy only has one snapshot)
+  if((HUB_TABS.has(id)&&(!PUBLIC||!_hub))||(_dirty.hub&&id!=='stat-entry')){_dirty.hub=false; loadHub().then(go);}
+  else go();
 }
 buildNav();
 switchTab('standings');
@@ -653,6 +741,7 @@ function renderSchedule(games,standings=_standings){
   // away team (right-aligned) | score | home team (left-aligned)
   const weeks=groupByWeek(games);
   const rank=Object.fromEntries((standings||[]).map(s=>[s.team,s.place]));   // standings place, shown before each name
+  let anyBox=false;
   let h=`<table class="grid-fixed sched"><colgroup><col style="width:70px"><col style="width:90px"><col style="width:120px">
       <col><col style="width:104px"><col></colgroup>
     <thead><tr><th>Date</th><th>Time</th><th>Location</th><th class="sched-away">Away</th><th class="sched-mid"></th><th>Home</th></tr></thead><tbody>`;
@@ -676,7 +765,9 @@ function renderSchedule(games,standings=_standings){
         const aw=winner===g.away_team, hw=winner===g.home_team;
         mid=`<span class="score-box"><b class="${aw?'win':''}">${aw?'W':'L'}</b><span class="dash">&ndash;</span><b class="${hw?'win':''}">${hw?'W':'L'}</b></span>`;
       }
-      h+=`<tr>
+      const box=_hub&&_hub.box_by_league_game[g.id];   // our games with stats entered open their box score
+      if(box) anyBox=true;
+      h+=`<tr${box?` class="clickable-row box-row" data-gid="${box}" title="View box score"`:''}>
         <td>${g.date_disp}</td><td class="muted">${g.time}</td>
         <td class="muted">${esc(g.location||'')}</td>
         <td class="sched-away">${nameCell(g.away_team)}</td><td class="sched-mid">${mid}</td><td>${nameCell(g.home_team)}</td>
@@ -684,6 +775,7 @@ function renderSchedule(games,standings=_standings){
     });
   });
   h+='</tbody></table>';
+  if(anyBox) h='<p class="muted" style="font-size:12px;margin:0 0 10px">Click a Vortex Unit game with a purple score for its box score.</p>'+h;
   const box=document.getElementById('schedule-container');
   box.innerHTML=games.length?h:'<p class="empty-state">No games yet this season'+(PUBLIC?'.':' &mdash; use <b>Sync from league site</b> on Enter Results to load the schedule.')+'</p>';
   if(_schedArchived) stripTeamLinks(box);
@@ -1043,7 +1135,7 @@ function LineupEditor(tableEl,summaryEl,onChange){
     for(let i=1;i<=INNINGS;i++) h+=`<th>Inn ${i}</th>`;
     h+=`<th>Benched</th><th>Move</th></tr></thead><tbody>`;
     ed.rows.forEach((row,r)=>{
-      h+=`<tr data-r="${r}"><td class="muted">${r+1}</td><td>${esc(row.player_name)}</td>`;
+      h+=`<tr data-r="${r}"><td class="muted">${r+1}</td><td>${esc(row.player_name)}${ed.flames?flame(row.player_id):''}</td>`;
       row.inn.forEach((v,i)=>{h+=`<td class="lu-cell" tabindex="-1" data-i="${i}">${posInput(v)}</td>`;});
       h+=`<td class="bench-count">${benchCount(row)}</td>
         <td style="white-space:nowrap">
@@ -1297,6 +1389,7 @@ const mainLineup=LineupEditor(
   document.getElementById('lineup-missing'),
   ()=>{refreshAddLineupSelect(); autosaveLineup(); refreshStrengthSoon();}
 );
+mainLineup.flames=true;   // hot hitters get a flame here, but not in Stat Entry's copy of the editor
 async function saveLineup(){
   await fetch('/api/lineup',{method:'POST',headers:{'Content-Type':'application/json'},
     body:JSON.stringify(entriesFromRows(mainLineup.rows))});
@@ -1441,7 +1534,7 @@ function renderAutoChecklist(){
     const disp=val===null||val===undefined?'—':(Number.isInteger(val)?val:Number(val).toFixed(3));
     h+=`<div class="checklist-item">
       <input type="checkbox" id="ck-${p.player_id}" data-name="${esc(p.player_name)}" data-pid="${p.player_id}" ${_autoUnchecked.has(p.player_id)?'':'checked'}>
-      <label for="ck-${p.player_id}">${esc(p.player_name)}</label>
+      <label for="ck-${p.player_id}">${esc(p.player_name)}${flame(p.player_id)}</label>
       <span class="stat-badge">${statKey.toUpperCase()}: ${disp}</span>
     </div>`;
   });
@@ -1469,7 +1562,7 @@ function generateAuto(){
   attending.forEach((p,i)=>{
     const val=p[statKey];
     const disp=val===null||val===undefined?'—':(Number.isInteger(val)?val:Number(val).toFixed(3));
-    h+=`<tr><td class="muted">${i+1}</td><td>${esc(p.player_name)}</td><td>${disp}</td></tr>`;
+    h+=`<tr><td class="muted">${i+1}</td><td>${esc(p.player_name)}${flame(p.player_id)}</td><td>${disp}</td></tr>`;
   });
   h+='</tbody></table>';
   document.getElementById('auto-result').innerHTML=attending.length?h:'<p class="muted">No attending players selected.</p>';
@@ -1632,7 +1725,7 @@ async function generateSmart(){
     const {p,rates:r,wpa}=info.get(id);
     const obp=1-r[5]-r[6], ab=1-r[0];
     const slg=ab>0?(r[1]+2*r[2]+3*r[3]+4*r[4])/ab:0;
-    h+=`<tr><td class="muted">${i+1}</td><td>${esc(p.player_name)}</td><td>${obp.toFixed(3)}</td>
+    h+=`<tr><td class="muted">${i+1}</td><td>${esc(p.player_name)}${flame(p.player_id)}</td><td>${obp.toFixed(3)}</td>
       <td>${slg.toFixed(3)}</td><td class="muted">${wpa?wpa.toFixed(0)+' PA':'no data'}</td></tr>`;
   });
   h+=`</tbody></table>
@@ -1759,7 +1852,7 @@ function renderStatsTable(rows){
       const v=r[c.key];
       let disp;
       if(v===null||v===undefined) disp='—';
-      else if(c.key==='player_name') disp=`<a class="player-link" data-pid="${r.player_id}">${esc(v)}</a>`;
+      else if(c.key==='player_name') disp=`<a class="player-link" data-pid="${r.player_id}">${esc(v)}</a>${flame(r.player_id)}`;
       else if(c.dec===null) disp=v;
       else if(c.dec===0) disp=Math.round(Number(v));
       else disp=Number(v).toFixed(c.dec);
@@ -2232,7 +2325,7 @@ function renderPlayersTable(){
   _players.filter(p=>filt==='all'||(filt==='active')===!!p.active).forEach(p=>{
     const expanded=_expandedPlayer===p.id;
     h+=`<tr data-pid="${p.id}" class="player-row" style="cursor:pointer">
-      <td><a class="player-link" data-pid="${p.id}">${esc(p.name)}</a>${p.hall_of_fame?'<span class="hof-badge" title="Vortex Unit Hall of Fame">HOF</span>':''}</td>
+      <td><a class="player-link" data-pid="${p.id}">${esc(p.name)}</a>${flame(p.id)}${p.hall_of_fame?'<span class="hof-badge" title="Vortex Unit Hall of Fame">HOF</span>':''}</td>
       <td>${p.g??0}</td>
       <td>${p.seasons??0}</td>
       <td><span style="color:${p.active?'var(--win)':'var(--loss)'}">${p.active?'Active':'Inactive'}</span></td>
@@ -2347,6 +2440,7 @@ document.getElementById('pp-back').addEventListener('click',()=>switchTab(_ppRet
 
 async function openPlayerPage(pid){
   if(_currentTab!=='player') _ppReturnTab=_currentTab||'stats';
+  document.getElementById('box-modal-overlay').classList.add('hidden');
   switchTab('player');
   window.scrollTo(0,0);
   const body=document.getElementById('pp-body');
@@ -2463,7 +2557,8 @@ function renderPlayerPage(){
     </tr></thead><tbody>`;
   log.forEach(g=>{
     const loose=!g.game_id;
-    h+=`<tr><td>${g.game_date?esc(g.game_date):'<span class="muted">—</span>'}</td>
+    const hasBox=g.game_id&&_hub&&_hub.box_ids.includes(g.game_id);
+    h+=`<tr${hasBox?` class="clickable-row box-row" data-gid="${g.game_id}" title="View box score"`:''}><td>${g.game_date?esc(g.game_date):'<span class="muted">—</span>'}</td>
       <td>${esc(g.label||'')}${loose?` <span class="muted">(${g.g} G, ${esc(g.season_name)})</span>`:''}${g.is_playoff?'<span class="playoff-tag">Playoff</span>':''}</td>
       <td>${esc(g.opponent||'')}</td><td>${g.pa}</td><td>${g.h}-${g.ab}</td>
       <td>${g.singles}</td><td>${g.doubles}</td><td>${g.triples}</td><td>${g.hr}</td><td>${g.bb}</td><td>${g.so}</td><td>${g.fo}</td>
@@ -2545,6 +2640,240 @@ function renderPlayerChart(){
   el.innerHTML=svg+'</svg>';
 }
 
+// ─── team history: leaders, record book, milestones, box scores ─────────────
+async function loadHub(){
+  _hub=await fetch('/api/hub').then(r=>r.ok?r.json():null).catch(()=>null);
+  if(!_hub||!Array.isArray(_hub.hot)) _hub=null;
+  _hot.clear();
+  if(_hub) _hub.hot.forEach(h=>_hot.set(h.player_id,h));
+}
+// the flame shown after a hot hitter's name on Lineup, Auto Lineup, Stats and Players
+function flame(pid){
+  const h=_hot.get(Number(pid));
+  return h?`<span class="hot-flame" title="Hot: ${esc(h.line)} over the last ${h.games} games">&#128293;</span>`:'';
+}
+// linked name; team entries (no player id) are just the team name
+function pLink(p){
+  if(!p.player_id) return `<b style="color:var(--yellow)">${esc(p.name||VORTEX)}</b>`;
+  return `<a class="player-link" data-pid="${p.player_id}">${esc(p.name)}</a>`;
+}
+const MONTHS=['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
+function niceDate(iso){const [y,m,d]=iso.split('-'); return `${MONTHS[parseInt(m,10)-1]} ${parseInt(d,10)}, ${y}`;}
+// "Sep 17, 2026 vs FOD Squad", or "Winter 2025 · Game 3" for games entered without a date
+function whenText(w,short){
+  if(!w) return '';
+  if(!w.date) return [w.season,w.label].filter(Boolean).join(short?' ':' · ');
+  if(short) return fmtDate(w.date);
+  return niceDate(w.date)+(w.opponent?' vs '+w.opponent:(w.label?' · '+w.label:''));
+}
+function gameWhen(w){
+  const t=esc(whenText(w));
+  return w&&w.game_id&&_hub&&_hub.box_ids.includes(w.game_id)?`<a class="box-link" data-gid="${w.game_id}" title="View box score">${t}</a>`:t;
+}
+const HUB_EMPTY='<p class="empty-state">Nothing here yet &mdash; it fills in as game stats are entered.</p>';
+function renderHubTab(id){
+  const box=document.getElementById(id+'-body');
+  if(!_hub){box.innerHTML=HUB_EMPTY; return;}
+  ({leaders:renderLeaders,records:renderRecords,milestones:renderMilestones})[id](box);
+}
+
+// a top-5 card: rank, name, value; `sub` adds a small line under each name
+function lbCard(title,rows,dec,note,sub){
+  let h=`<div class="lb-card"><p class="lb-title">${esc(title)}${note?`<span>${esc(note)}</span>`:''}</p>`;
+  if(!rows.length) return h+'<p class="lb-empty">Nobody yet</p></div>';
+  rows.forEach((r,i)=>{
+    h+=`<div class="lb-row${r.rank===1?' first':''}"><span class="rk">${i&&rows[i-1].rank===r.rank?'':r.rank}</span>
+      <span class="nm">${pLink(r)}${sub?`<small>${sub(r)}</small>`:''}</span><span class="v">${ppFmt(r.value,dec)}</span></div>`;
+  });
+  return h+'</div>';
+}
+
+// ── leaders ──
+let _ldScope=null;
+function renderLeaders(box){
+  const scopes=_hub.leaders;
+  if(!scopes.some(s=>String(s.id)===String(_ldScope))) _ldScope=(scopes.find(s=>s.current)||scopes[0]).id;
+  const sc=scopes.find(s=>String(s.id)===String(_ldScope));
+  let h='';
+  if(_hub.hot.length){
+    const rule=_hub.hot_rule;
+    h+=`<div class="card"><p class="section-heading" style="margin-top:0">&#128293; Who&rsquo;s Hot</p>
+      <div class="hot-list">${_hub.hot.map(x=>`<div class="hot-item">${pLink(x)}<b>${esc(x.line)}</b>
+        <span class="muted">last ${x.games} games &middot; ${ppFmt(x.ops,3)} OPS</span></div>`).join('')}</div>
+      <p class="muted hub-note">Hot means an OPS over the last ${rule.games} games at least ${Math.round((rule.ratio-1)*100)}% above the team&rsquo;s season mark (${ppFmt(rule.team_ops,3)}).</p></div>`;
+  }
+  h+=`<div class="card"><div class="pill-bar" id="ld-scopes">${scopes.map(s=>
+      `<button class="pill${String(s.id)===String(_ldScope)?' active':''}" data-id="${s.id}">${esc(s.name)}</button>`).join('')}</div>
+    <div class="hub-grid">${sc.boards.map(b=>lbCard(b.title,b.rows,b.dec,b.qualified?'qualified':'')).join('')}</div>
+    <p class="muted hub-note">Qualified = played in more than a quarter of the most games anyone played in that span. Playoff games aren&rsquo;t counted.</p></div>`;
+  h+=`<div class="card"><p class="section-heading" style="margin-top:0">Current Streaks</p>
+    <div class="hub-grid">${_hub.streaks.map(s=>lbCard(s.title,s.current,0,s.unit,r=>'since '+esc(whenText(r.start,true)))).join('')}</div>
+    <p class="muted hub-note">Counted over the games a player was at, across seasons; missing a week doesn&rsquo;t end a streak. All-time bests are in the Record Book.</p></div>`;
+  box.innerHTML=h;
+  box.querySelectorAll('#ld-scopes .pill').forEach(b=>b.addEventListener('click',()=>{_ldScope=b.dataset.id; renderLeaders(box);}));
+}
+
+// ── record book ──
+let _rbView='records';
+const RB_VIEWS=[['records','Records'],['streaks','Streaks'],['awards','Awards'],['hof','Hall of Fame']];
+function recTable(title,recs,note){
+  let h=`<div class="card"><p class="section-heading" style="margin-top:0">${title}</p>`;
+  if(!recs.length) return h+'<p class="empty-state">Nothing recorded yet.</p></div>';
+  h+='<table class="rec-table"><tbody>';
+  recs.forEach(r=>{
+    const show=r.count>6?r.holders.slice(0,3):r.holders;   // long ties: just the latest few
+    const holders=show.map(x=>{
+      const w=x.when||{};
+      const when='game_id' in w?gameWhen(w):esc(w.season||'')+(w.live?' <span class="played-tag">in progress</span>':'');
+      return `<div class="rec-holder">${x.player_id?pLink(x)+' <span class="muted">&middot;</span> ':''}<span class="muted">${when}</span></div>`;
+    }).join('');
+    h+=`<tr><td class="rec-label">${esc(r.label)}</td><td class="rec-val">${ppFmt(r.value,r.dec)}</td>
+      <td>${holders}${r.count>show.length?`<div class="muted rec-more">done ${r.count} times &middot; latest shown</div>`:''}</td></tr>`;
+  });
+  return h+'</tbody></table>'+(note?`<p class="muted hub-note">${note}</p>`:'')+'</div>';
+}
+function awardCell(list,dec){
+  return list&&list.length?list.map(w=>`${pLink(w)} <small>${ppFmt(w.value,dec)}</small>`).join('<br>'):'<span class="muted">—</span>';
+}
+function renderRecords(box){
+  const H=_hub, R=H.records;
+  let h=`<div class="pill-bar" id="rb-views">${RB_VIEWS.map(([id,l])=>`<button class="pill${id===_rbView?' active':''}" data-id="${id}">${l}</button>`).join('')}</div>`;
+  if(_rbView==='records'){
+    h+=`<div class="pp-grid"><div>${recTable('Single Game',R.game,'Click a date for the box score.')}${recTable('Single Game &middot; Team',R.team,'Runs and margin come from league scores, so only seasons with a schedule on file count.')}</div>
+      <div>${recTable('Single Season',R.season)}${recTable('Career',R.career)}</div></div>
+      <p class="muted hub-note" style="margin-top:0">Rate records need a qualified hitter. Playoff games aren&rsquo;t counted, and games entered only as season totals can&rsquo;t hold a single-game record.</p>`;
+  } else if(_rbView==='streaks'){
+    h+=`<div class="card"><p class="section-heading" style="margin-top:0">Longest Streaks</p>
+      <div class="hub-grid">${H.streaks.map(s=>lbCard(s.title,s.record,0,s.unit,
+        r=>(r.active?'<span class="played-tag done">active</span> ':'')+esc(whenText(r.start,true))+' &ndash; '+esc(whenText(r.end,true)))).join('')}</div>
+      <p class="muted hub-note">Counted over the games a player was at, across seasons; missing a week doesn&rsquo;t end a streak.</p></div>`;
+  } else if(_rbView==='awards'){
+    const defs=H.award_defs;
+    h+=`<div class="card"><p class="section-heading" style="margin-top:0">Season Awards</p>`;
+    if(!H.awards.length) h+='<p class="empty-state">No seasons with stats yet.</p>';
+    else{
+      h+=`<div style="overflow-x:auto"><table class="aw-table"><thead><tr><th>Season</th>${defs.map(d=>`<th title="${esc(d.note)}">${esc(d.title)}</th>`).join('')}</tr></thead><tbody>`;
+      H.awards.forEach(a=>{
+        h+=`<tr><td><b>${esc(a.season)}</b>${a.final?'':'<br><span class="played-tag">leaders so far</span>'}</td>${defs.map(d=>`<td>${awardCell(a.awards[d.key],d.dec)}</td>`).join('')}</tr>`;
+      });
+      h+=`</tbody></table></div><p class="muted hub-note">${defs.map(d=>`<b>${esc(d.title)}</b>: ${esc(d.note)}`).join(' &middot; ')}. Ties share the award.</p>`;
+    }
+    h+='</div>';
+    if(H.trophy_case.length){
+      const name=Object.fromEntries(defs.map(d=>[d.key,d.title]));
+      h+=`<div class="card"><p class="section-heading" style="margin-top:0">Trophy Case</p><table class="rec-table"><tbody>${H.trophy_case.map(t=>
+        `<tr><td style="width:30%">${pLink(t)}</td><td class="rec-val">${t.count}</td>
+          <td class="muted">${Object.entries(t.awards).map(([k,n])=>(n>1?n+'&times; ':'')+esc(name[k]||k)).join(', ')}</td></tr>`).join('')}</tbody></table>
+        <p class="muted hub-note">Awards from finished seasons only.</p></div>`;
+    }
+  } else {
+    if(!H.hof.length) h+=`<div class="card"><p class="empty-state">Nobody has been inducted yet${PUBLIC?'.':' &mdash; induct a player from the Players tab.'}</p></div>`;
+    else{
+      const name=Object.fromEntries(H.award_defs.map(d=>[d.key,d.title]));
+      h+=`<div class="pp-grid">${H.hof.map(p=>{
+        const L=p.line, sp=p.seasons;
+        const tiles=L?[['G',L.g,0],['H',L.h,0],['HR',L.hr,0],['BA',L.ba,3],['OBP',L.obp,3],['SLG',L.slg,3],['OPS',L.ops,3],['WAR',L.war,1]]:[];
+        const tr=Object.entries(p.trophies).map(([k,n])=>(n>1?n+'&times; ':'')+esc(name[k]||k));
+        return `<div class="hof-plaque"><h3>&#127942; ${pLink(p)}</h3>
+          <div class="pp-sub">Vortex Unit Hall of Fame${sp.length?` &middot; ${esc(sp[0])}${sp.length>1?' &ndash; '+esc(sp[sp.length-1]):''}`:''}</div>
+          <div class="pp-tiles">${tiles.map(([l,v,d])=>`<div class="pp-tile"><b>${ppFmt(v,d)}</b><span>${l}</span></div>`).join('')}</div>
+          ${p.leads.length?`<div class="pp-leads">${p.leads.map(l=>`<span class="pp-lead">&#9733; ${esc(l)}</span>`).join('')}</div>`:''}
+          ${tr.length?`<p class="muted" style="font-size:12px;margin:12px 0 0">${tr.join(' &middot; ')}</p>`:''}</div>`;
+      }).join('')}</div>`;
+    }
+  }
+  box.innerHTML=h;
+  box.querySelectorAll('#rb-views .pill').forEach(b=>b.addEventListener('click',()=>{_rbView=b.dataset.id; renderRecords(box);}));
+}
+
+// ── milestone watch ──
+const MS_SHOWN=15;
+let _msAllReached=false, _msAllFeats=false;
+function msCard(x,team){
+  const eta=team?'':(x.games===1?'<span class="ms-eta next">could be next game</span>':`<span class="ms-eta">about ${x.games} games</span>`);
+  return `<div class="ms-card${team?' team':''}"><div class="ms-top"><span>${pLink(team?{name:VORTEX}:x)}</span>${eta}</div>
+    <div class="ms-need"><b>${x.need}</b> ${esc(x.noun)} from <b>${x.target}</b></div>
+    <div class="ms-bar"><i style="width:${Math.max(3,x.pct)}%"></i></div>
+    <div class="muted" style="font-size:11px">${x.current} ${team?'':'career '}${esc(x.what)} so far</div></div>`;
+}
+function renderMilestones(box){
+  const M=_hub.milestones;
+  let h=`<div class="card"><p class="section-heading" style="margin-top:0">On Deck</p>`;
+  h+=M.upcoming.length?`<div class="hub-grid">${M.upcoming.map(x=>msCard(x)).join('')}</div>`
+    :'<p class="empty-state">Nobody is within a few games of a career mark right now.</p>';
+  h+=`<p class="section-heading" style="margin-top:22px">Team Marks</p><div class="hub-grid">${M.team_next.map(x=>msCard(x,true)).join('')}</div>
+    <p class="muted hub-note">Career marks an active player could reach within about three games at their usual pace.</p></div>`;
+
+  const reached=_msAllReached?M.reached:M.reached.slice(0,MS_SHOWN);
+  h+=`<div class="pp-grid"><div class="card"><p class="section-heading" style="margin-top:0">Milestones Reached</p>`;
+  h+=reached.length?reached.map(x=>`<div class="ms-row"><span class="ico">&#9733;</span><div>${pLink(x)} &mdash; ${esc(x.text)}
+      <div class="sub">${gameWhen(x.when)}</div></div></div>`).join(''):'<p class="empty-state">None yet.</p>';
+  if(M.reached.length>MS_SHOWN) h+=`<button class="btn btn-sm" id="ms-more" style="margin-top:12px">${_msAllReached?'Show fewer':'Show all '+M.reached.length}</button>`;
+  h+='</div>';
+
+  const feats=_msAllFeats?_hub.feats:_hub.feats.slice(0,MS_SHOWN);
+  h+=`<div class="card"><p class="section-heading" style="margin-top:0">Rare Feats</p>
+    <div style="margin-bottom:8px">${_hub.feat_counts.map(c=>`<span class="feat-chip${c.count?'':' none'}"><b>${c.count}</b>${esc(c.tag)}</span>`).join('')}</div>`;
+  h+=feats.length?feats.map(f=>`<div class="ms-row"><span class="ico">&#9889;</span><div>${pLink(f)} <span class="muted">&middot; ${esc(f.line)}</span>
+      <div style="margin-top:4px">${f.tags.map(t=>`<span class="feat-chip">${esc(t)}</span>`).join('')}</div>
+      <div class="sub">${gameWhen(f.when)}</div></div></div>`).join(''):'<p class="empty-state">None yet.</p>';
+  if(_hub.feats.length>MS_SHOWN) h+=`<button class="btn btn-sm" id="feats-more" style="margin-top:12px">${_msAllFeats?'Show fewer':'Show all '+_hub.feats.length}</button>`;
+  if(_hub.cycle_watch.length){
+    const none=!_hub.feat_counts.some(c=>c.tag==='Cycle'&&c.count);
+    h+=`<p class="section-heading" style="margin-top:22px">Cycle Watch</p>
+      <p class="muted" style="font-size:12px;margin:0 0 4px">${none?'Nobody has hit for the cycle yet. ':''}The closest calls:</p>
+      ${_hub.cycle_watch.map(c=>`<div class="ms-row"><span class="ico">&#9678;</span><div>${pLink(c)} <span class="muted">&middot; ${esc(c.line)}</span> &mdash; a ${esc(c.missing)} short
+        <div class="sub">${gameWhen(c.when)}</div></div></div>`).join('')}`;
+  }
+  h+=`</div></div><p class="muted hub-note" style="margin-top:0">Perfect Night = 5 or more trips to the plate without making an out. Playoff games aren&rsquo;t counted.</p>`;
+  box.innerHTML=h;
+  const more=document.getElementById('ms-more'); if(more) more.addEventListener('click',()=>{_msAllReached=!_msAllReached; renderMilestones(box);});
+  const fm=document.getElementById('feats-more'); if(fm) fm.addEventListener('click',()=>{_msAllFeats=!_msAllFeats; renderMilestones(box);});
+}
+
+// ── box score ──
+// Opens from a Vortex game on the Schedule, a player's game log, or any linked date in the history tabs.
+const boxOverlay=document.getElementById('box-modal-overlay');
+document.addEventListener('click',e=>{
+  const a=e.target.closest('.box-link,.box-row');
+  if(!a||e.target.closest('.team-link')) return;
+  openBoxScore(parseInt(a.dataset.gid,10));
+});
+document.getElementById('box-modal-close').addEventListener('click',()=>boxOverlay.classList.add('hidden'));
+boxOverlay.addEventListener('click',e=>{ if(e.target===boxOverlay) boxOverlay.classList.add('hidden'); });
+document.addEventListener('keydown',e=>{ if(e.key==='Escape') boxOverlay.classList.add('hidden'); });
+
+async function openBoxScore(gid){
+  const body=document.getElementById('box-modal-body');
+  body.innerHTML='<p class="muted">Loading&hellip;</p>';
+  boxOverlay.classList.remove('hidden');
+  const res=await fetch('/api/boxscore/'+gid).catch(()=>null);
+  if(!res||!res.ok){ body.innerHTML='<p class="muted">No box score for this game yet.</p>'; return; }
+  const B=await res.json(), g=B.game, r=B.result, T=B.total;
+  const opp=(r&&r.opponent)||g.opponent||'';
+  const scored=r&&r.us!==null&&r.them!==null;
+  const title=scored?`${VORTEX} ${r.us}, ${esc(opp)} ${r.them}`:(opp?`${VORTEX} vs ${esc(opp)}`:`${VORTEX} &middot; ${esc(g.label)}`);
+  const sub=[g.game_date?niceDate(g.game_date):'',g.season,g.label,r?(r.home?'Home':'Away'):'',r?r.time:'',r?r.location:''].filter(Boolean).map(esc).join(' &middot; ');
+  let h=`<div class="box-head"><p class="modal-title" style="margin:0">${title}</p>
+      ${r&&r.result?`<span class="box-res ${r.result}">${r.result==='W'?'WIN':'LOSS'}</span>`:''}${g.is_playoff?'<span class="playoff-tag">Playoff</span>':''}</div>
+    <p class="modal-sub" style="margin-top:4px">${sub}</p>
+    <div class="box-pog">&#11088; <b>Player of the Game:</b> ${pLink(B.player_of_game)} <span class="muted">&middot; ${esc(B.player_of_game.line)}</span></div>
+    <div style="overflow-x:auto"><table class="box-table"><thead><tr><th>#</th><th>Batter</th><th>${B.rows.some(x=>x.pos)?'Pos':''}</th>
+      <th>AB</th><th>H</th><th>1B</th><th>2B</th><th>3B</th><th>HR</th><th>BB</th><th>SO</th><th>TB</th><th>AVG</th></tr></thead><tbody>`;
+  const cells=x=>`<td>${x.ab}</td><td>${x.h}</td><td>${x.singles}</td><td>${x.doubles}</td><td>${x.triples}</td><td>${x.hr}</td>
+    <td>${x.bb}</td><td>${x.so}</td><td>${x.tb}</td><td>${ppFmt(x.ba,3)}</td>`;
+  B.rows.forEach((x,i)=>{
+    h+=`<tr><td class="muted">${x.slot||i+1}</td><td>${pLink({player_id:x.player_id,name:x.player_name})}</td>
+      <td class="muted">${esc(x.pos||'')}</td>${cells(x)}</tr>`;
+  });
+  h+=`<tr class="totals-row"><td></td><td>Team</td><td></td>${cells(T)}</tr></tbody></table></div>`;
+  const notes=[...B.feats.map(f=>`<b>${esc(f.name)}</b>: ${f.tags.map(esc).join(', ')} <span class="muted">(${esc(f.line)})</span>`),
+               ...B.milestones.map(m=>`<b>${esc(m.name)}</b>: ${esc(m.text)}`)];
+  if(notes.length) h+=`<div class="modal-section-title">Game Notes</div><ul class="box-notes">${notes.map(n=>`<li>${n}</li>`).join('')}</ul>`;
+  if(g.is_playoff) h+='<p class="modal-formula">Playoff games are kept per game but left out of season and career totals.</p>';
+  body.innerHTML=h;
+}
+
 // ─── bootstrap ──────────────────────────────────────────────────────────────
 async function loadAll(){
   [_games, _standings, _seasons, _players] = await Promise.all([
@@ -2552,6 +2881,7 @@ async function loadAll(){
     fetch('/api/standings').then(r=>r.json()),
     fetch('/api/seasons').then(r=>r.json()),
     fetch('/api/players').then(r=>r.json()),
+    loadHub(),
   ]);
 
   renderStandings(_standings);
