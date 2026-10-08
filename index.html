@@ -285,6 +285,15 @@ input[type=number]::-webkit-inner-spin-button,input[type=number]::-webkit-outer-
 .box-pog{background:rgba(245,197,24,.1);border:1px solid var(--yellow);border-radius:10px;padding:9px 14px;font-size:13px;margin-bottom:14px}
 .box-table td:nth-child(n+4),.box-table th:nth-child(n+4){text-align:right;font-variant-numeric:tabular-nums}
 .box-notes{font-size:13px;line-height:1.7;margin:0;padding-left:18px}
+.ms-card.shame{border-color:#5a2a33}
+.ms-card.shame .ms-bar i{background:var(--loss)}
+.dub-note{font-size:11px;color:var(--sub);margin:-2px 0 8px}
+.dub-win{font-size:14px;padding:3px 0}
+.dub-win small{display:block;color:var(--sub);font-size:11px;margin-top:1px;white-space:normal}
+.box-tough{font-size:12px;color:var(--sub);margin:-6px 0 14px;padding:0 14px}
+.split-table td{white-space:normal;vertical-align:top}
+.split-tag{white-space:nowrap;font-size:10px;font-weight:700;border-radius:10px;padding:1px 7px;margin-left:6px;background:#1e3a2a;color:var(--win)}
+.split-tag.jinx{background:#3a2026;color:var(--loss)}
 </style>
 </head>
 <body>
@@ -304,7 +313,8 @@ input[type=number]::-webkit-inner-spin-button,input[type=number]::-webkit-outer-
   <div id="tab-schedule" class="tab-section">
     <p class="section-heading">Schedule &amp; Results</p>
     <div class="card">
-      <div class="season-pick-row" id="schedule-season-row" style="display:none"><label class="muted" for="schedule-season">Season</label><select class="styled" id="schedule-season"></select></div>
+      <div class="season-pick-row" id="schedule-season-row" style="display:none"><label class="muted" for="schedule-season">Season</label><select class="styled" id="schedule-season"></select>
+        <button class="btn btn-sm" id="schedule-current-btn" style="display:none">Current Season</button></div>
       <div id="schedule-container"></div></div>
   </div>
   <div id="tab-enter" class="tab-section">
@@ -515,7 +525,7 @@ input[type=number]::-webkit-inner-spin-button,input[type=number]::-webkit-outer-
 </div>
 
 <script>
-window.VU_PUBLIC={updated:"20261008111951",updatedText:"Oct 8, 2026 11:19 AM"};
+window.VU_PUBLIC={updated:"20261008114445",updatedText:"Oct 8, 2026 11:44 AM"};
 (function(){
   const realFetch=window.fetch.bind(window);
   const routes=[
@@ -2709,13 +2719,46 @@ function renderLeaders(box){
   h+=`<div class="card"><p class="section-heading" style="margin-top:0">Current Streaks</p>
     <div class="hub-grid">${_hub.streaks.map(s=>lbCard(s.title,s.current,0,s.unit,r=>'since '+esc(whenText(r.start,true)))).join('')}</div>
     <p class="muted hub-note">Counted over the games a player was at, across seasons; missing a week doesn&rsquo;t end a streak. All-time bests are in the Record Book.</p></div>`;
+  const S=_hub.splits;
+  if(S&&S.charm.length){
+    const side=x=>`<b>${x.w}-${x.l}</b> <span class="muted">&middot; ${x.rpg.toFixed(1)} R/G</span>`;
+    h+=`<div class="card"><p class="section-heading" style="margin-top:0">Fun Splits</p><div style="max-width:720px">`;
+    {
+      const top=S.charm[0].swing, bottom=S.charm[S.charm.length-1].swing;
+      h+=`<div><p class="lb-title">Good Luck Charm</p><table class="split-table"><thead><tr><th>Player</th><th>Team with them</th><th>Team without them</th></tr></thead><tbody>${
+        S.charm.map(c=>`<tr><td>${pLink(c)}${c.swing>0&&c.swing===top?'<span class="split-tag">lucky charm</span>':''}${c.swing<0&&c.swing===bottom?'<span class="split-tag jinx">jinx</span>':''}</td>
+          <td>${side(c.with)}</td><td>${side(c.without)}</td></tr>`).join('')}</tbody></table>
+        <p class="muted hub-note">Team record and runs per game (R/G) in the ${S.charm_games} games that have both a league score and a stat sheet. Entirely unscientific.</p></div>`;
+    }
+    h+='</div></div>';
+  }
   box.innerHTML=h;
   box.querySelectorAll('#ld-scopes .pill').forEach(b=>b.addEventListener('click',()=>{_ldScope=b.dataset.id; renderLeaders(box);}));
 }
 
 // ── record book ──
-let _rbView='records';
-const RB_VIEWS=[['records','Records'],['streaks','Streaks'],['awards','Awards'],['hof','Hall of Fame']];
+let _rbView='records', _dubScope=null, _shameAllK=false, _shameAllCollars=false;
+const RB_VIEWS=[['records','Records'],['streaks','Streaks'],['awards','Awards'],['hof','Hall of Fame'],['shame','Wall of Shame']];
+const SHAME_SHOWN=10;
+// a list of game lines (strikeouts, hitless games) that opens up past the first few
+function shameList(items,all,btnId,extra){
+  const shown=all?items:items.slice(0,SHAME_SHOWN);
+  let h=shown.map(x=>`<div class="ms-row"><span class="ico">${extra?extra(x):'&#128128;'}</span><div>${pLink(x)} <span class="muted">&middot; ${esc(x.line)}</span>
+    <div class="sub">${gameWhen(x.when)}</div></div></div>`).join('');
+  if(items.length>SHAME_SHOWN) h+=`<button class="btn btn-sm" id="${btnId}" style="margin-top:12px">${all?'Show fewer':'Show all '+items.length}</button>`;
+  return h;
+}
+function dubiousCard(){
+  const D=_hub.dubious; if(!D||!D.length) return '';
+  if(!D.some(s=>String(s.id)===String(_dubScope))) _dubScope=D[0].id;
+  const sc=D.find(s=>String(s.id)===String(_dubScope));
+  return `<div class="card"><p class="section-heading" style="margin-top:0">Dubious Honors</p>
+    <div class="pill-bar" id="dub-scopes">${D.map(s=>`<button class="pill${String(s.id)===String(_dubScope)?' active':''}" data-id="${s.id}">${esc(s.name)}</button>`).join('')}</div>
+    ${sc.awards.length?`<div class="hub-grid">${sc.awards.map(a=>`<div class="lb-card"><p class="lb-title">${esc(a.title)}</p><p class="dub-note">${esc(a.note)}</p>
+      ${a.winners.map(w=>`<div class="dub-win">${pLink(w)}<small>${esc(w.text)}</small></div>`).join('')}${a.more?`<div class="muted rec-more">+${a.more} more</div>`:''}</div>`).join('')}</div>`
+      :'<p class="empty-state">Nothing to hand out yet.</p>'}
+    <p class="muted hub-note">${sc.final?'':'This season is still going, so these can change hands. '}All in good fun. Bench, position and batting-order honors only cover games with a saved lineup.</p></div>`;
+}
 function recTable(title,recs,note){
   let h=`<div class="card"><p class="section-heading" style="margin-top:0">${title}</p>`;
   if(!recs.length) return h+'<p class="empty-state">Nothing recorded yet.</p></div>';
@@ -2725,7 +2768,7 @@ function recTable(title,recs,note){
     const holders=show.map(x=>{
       const w=x.when||{};
       const when='game_id' in w?gameWhen(w):esc(w.season||'')+(w.live?' <span class="played-tag">in progress</span>':'');
-      return `<div class="rec-holder">${x.player_id?pLink(x)+' <span class="muted">&middot;</span> ':''}<span class="muted">${when}</span></div>`;
+      return `<div class="rec-holder">${x.player_id?pLink(x)+' <span class="muted">&middot;</span> ':''}<span class="muted">${when}${!x.player_id&&x.line?' &middot; '+esc(x.line):''}</span></div>`;
     }).join('');
     h+=`<tr><td class="rec-label">${esc(r.label)}</td><td class="rec-val">${ppFmt(r.value,r.dec)}</td>
       <td>${holders}${r.count>show.length?`<div class="muted rec-more">done ${r.count} times &middot; latest shown</div>`:''}</td></tr>`;
@@ -2737,7 +2780,8 @@ function awardCell(list,dec){
 }
 function renderRecords(box){
   const H=_hub, R=H.records;
-  let h=`<div class="pill-bar" id="rb-views">${RB_VIEWS.map(([id,l])=>`<button class="pill${id===_rbView?' active':''}" data-id="${id}">${l}</button>`).join('')}</div>`;
+  if(_rbView==='shame'&&!H.shame) _rbView='records';
+  let h=`<div class="pill-bar" id="rb-views">${RB_VIEWS.filter(([id])=>id!=='shame'||H.shame).map(([id,l])=>`<button class="pill${id===_rbView?' active':''}" data-id="${id}">${l}</button>`).join('')}</div>`;
   if(_rbView==='records'){
     h+=`<div class="pp-grid"><div>${recTable('Single Game',R.game,'Click a date for the box score.')}${recTable('Single Game &middot; Team',R.team,'Runs and margin come from league scores, so only seasons with a schedule on file count.')}</div>
       <div>${recTable('Single Season',R.season)}${recTable('Career',R.career)}</div></div>
@@ -2766,6 +2810,20 @@ function renderRecords(box){
           <td class="muted">${Object.entries(t.awards).map(([k,n])=>(n>1?n+'&times; ':'')+esc(name[k]||k)).join(', ')}</td></tr>`).join('')}</tbody></table>
         <p class="muted hub-note">Awards from finished seasons only.</p></div>`;
     }
+    h+=dubiousCard();
+  } else if(_rbView==='shame'){
+    const Sh=H.shame;
+    h+=`<div class="pp-grid"><div class="card"><p class="section-heading" style="margin-top:0">Strikeout Log</p>
+        <p class="muted" style="font-size:12px;margin:0 0 12px">Striking out in slow-pitch takes real effort. Every one is on the record.</p>
+        <div class="hub-grid" style="margin-bottom:10px">${lbCard('Career Strikeouts',Sh.k_leaders,0)}</div>
+        ${Sh.strikeouts.length?shameList(Sh.strikeouts,_shameAllK,'shame-k-more',x=>x.n>1?x.n+'K':'K'):'<p class="empty-state">Nobody has struck out. Suspicious.</p>'}</div>
+      <div class="card"><p class="section-heading" style="margin-top:0">The Collar</p>
+        <p class="muted" style="font-size:12px;margin:0 0 12px">Hitless games (two or more at-bats).</p>
+        <div class="hub-grid" style="margin-bottom:10px">${lbCard('Most Hitless Games',Sh.collar_leaders,0)}${
+          Sh.collar_streaks.length?lbCard('Longest Hitless Streak',Sh.collar_streaks,0,'games',r=>esc(whenText(r.start,true))+' &ndash; '+esc(whenText(r.end,true))):''}</div>
+        ${Sh.collars.length?shameList(Sh.collars,_shameAllCollars,'shame-c-more'):'<p class="empty-state">Nobody has worn the collar yet.</p>'}</div></div>
+      <div class="pp-grid"><div>${recTable('Out Machine',Sh.records)}</div>
+      <div>${recTable('Games We Don&rsquo;t Talk About',Sh.team,'Scores come from the league schedule; hitting lows only count games with at least 8 batters entered.')}</div></div>`;
   } else {
     if(!H.hof.length) h+=`<div class="card"><p class="empty-state">Nobody has been inducted yet${PUBLIC?'.':' &mdash; induct a player from the Players tab.'}</p></div>`;
     else{
@@ -2784,6 +2842,9 @@ function renderRecords(box){
   }
   box.innerHTML=h;
   box.querySelectorAll('#rb-views .pill').forEach(b=>b.addEventListener('click',()=>{_rbView=b.dataset.id; renderRecords(box);}));
+  box.querySelectorAll('#dub-scopes .pill').forEach(b=>b.addEventListener('click',()=>{_dubScope=b.dataset.id; renderRecords(box);}));
+  const km=document.getElementById('shame-k-more'); if(km) km.addEventListener('click',()=>{_shameAllK=!_shameAllK; renderRecords(box);});
+  const cm=document.getElementById('shame-c-more'); if(cm) cm.addEventListener('click',()=>{_shameAllCollars=!_shameAllCollars; renderRecords(box);});
 }
 
 // ── milestone watch ──
@@ -2791,7 +2852,7 @@ const MS_SHOWN=15;
 let _msAllReached=false, _msAllFeats=false;
 function msCard(x,team){
   const eta=team?'':(x.games===1?'<span class="ms-eta next">could be next game</span>':`<span class="ms-eta">about ${x.games} games</span>`);
-  return `<div class="ms-card${team?' team':''}"><div class="ms-top"><span>${pLink(team?{name:VORTEX}:x)}</span>${eta}</div>
+  return `<div class="ms-card${team?' team':''}${x.shame?' shame':''}"><div class="ms-top"><span>${pLink(team?{name:VORTEX}:x)}</span>${eta}</div>
     <div class="ms-need"><b>${x.need}</b> ${esc(x.noun)} from <b>${x.target}</b></div>
     <div class="ms-bar"><i style="width:${Math.max(3,x.pct)}%"></i></div>
     <div class="muted" style="font-size:11px">${x.current} ${team?'':'career '}${esc(x.what)} so far</div></div>`;
@@ -2806,7 +2867,7 @@ function renderMilestones(box){
 
   const reached=_msAllReached?M.reached:M.reached.slice(0,MS_SHOWN);
   h+=`<div class="pp-grid"><div class="card"><p class="section-heading" style="margin-top:0">Milestones Reached</p>`;
-  h+=reached.length?reached.map(x=>`<div class="ms-row"><span class="ico">&#9733;</span><div>${pLink(x)} &mdash; ${esc(x.text)}
+  h+=reached.length?reached.map(x=>`<div class="ms-row"><span class="ico">${x.shame?'&#128128;':'&#9733;'}</span><div>${pLink(x)} &mdash; ${esc(x.text)}
       <div class="sub">${gameWhen(x.when)}</div></div></div>`).join(''):'<p class="empty-state">None yet.</p>';
   if(M.reached.length>MS_SHOWN) h+=`<button class="btn btn-sm" id="ms-more" style="margin-top:12px">${_msAllReached?'Show fewer':'Show all '+M.reached.length}</button>`;
   h+='</div>';
@@ -2858,6 +2919,7 @@ async function openBoxScore(gid){
       ${r&&r.result?`<span class="box-res ${r.result}">${r.result==='W'?'WIN':'LOSS'}</span>`:''}${g.is_playoff?'<span class="playoff-tag">Playoff</span>':''}</div>
     <p class="modal-sub" style="margin-top:4px">${sub}</p>
     <div class="box-pog">&#11088; <b>Player of the Game:</b> ${pLink(B.player_of_game)} <span class="muted">&middot; ${esc(B.player_of_game.line)}</span></div>
+    ${B.tough_night?`<p class="box-tough">&#129398; Tough night: ${pLink(B.tough_night)} &middot; ${esc(B.tough_night.line)}</p>`:''}
     <div style="overflow-x:auto"><table class="box-table"><thead><tr><th>#</th><th>Batter</th><th>${B.rows.some(x=>x.pos)?'Pos':''}</th>
       <th>AB</th><th>H</th><th>1B</th><th>2B</th><th>3B</th><th>HR</th><th>BB</th><th>SO</th><th>TB</th><th>AVG</th></tr></thead><tbody>`;
   const cells=x=>`<td>${x.ab}</td><td>${x.h}</td><td>${x.singles}</td><td>${x.doubles}</td><td>${x.triples}</td><td>${x.hr}</td>
@@ -2913,19 +2975,51 @@ async function initSeasonPickers(){
   _leagueSeasons=await fetch('/api/league-seasons').then(r=>r.json()).catch(()=>[]);
   const cur=_leagueSeasons.find(s=>s.current);
   const nm=document.getElementById('enter-season-name'); if(nm) nm.textContent=cur?cur.name:'';
-  [['standings-season','standings-season-row'],['schedule-season','schedule-season-row']].forEach(([id,row])=>{
+  // Schedule also lists seasons with no league schedule on file but with our own games from
+  // Stat Entry, so their box scores can still be opened
+  const boxed=new Set(((_hub&&_hub.box_seasons)||[]).map(s=>s.season_id));
+  const sched=_seasons.slice().reverse()
+    .filter(s=>boxed.has(s.id)||_leagueSeasons.some(l=>l.id===s.id))
+    .map(s=>({id:s.id,name:s.name,current:!!(cur&&cur.id===s.id)}));
+  [['standings-season','standings-season-row',_leagueSeasons],['schedule-season','schedule-season-row',sched.length?sched:_leagueSeasons]].forEach(([id,row,list])=>{
     const sel=document.getElementById(id);
-    sel.innerHTML=_leagueSeasons.map(s=>`<option value="${s.current?'':s.id}">${esc(s.name)}${s.current?' (current)':''}</option>`).join('');
-    document.getElementById(row).style.display=_leagueSeasons.length>1?'flex':'none';
+    sel.innerHTML=list.map(s=>`<option value="${s.current?'':s.id}">${esc(s.name)}${s.current?' (current)':''}</option>`).join('');
+    document.getElementById(row).style.display=list.length>1?'flex':'none';
   });
+  document.getElementById('schedule-current-btn').style.display='none';
+}
+// A past season with no league schedule on file: our own games from Stat Entry, each opening its box score
+function renderSeasonBoxList(sid){
+  const box=document.getElementById('schedule-container');
+  const season=((_hub&&_hub.box_seasons)||[]).find(s=>String(s.season_id)===String(sid));
+  if(!season||!season.games.length){box.innerHTML='<p class="empty-state">No games with stats for this season.</p>'; return;}
+  let h=`<p class="muted" style="font-size:12px;margin:0 0 10px">${esc(season.season)} &mdash; Vortex Unit&rsquo;s games from the stat sheets (no league schedule on file). Click a game for its box score.</p>
+    <table><thead><tr><th>Date</th><th>Game</th><th>Opponent</th><th>Result</th><th>Team Hitting</th><th>Player of the Game</th></tr></thead><tbody>`;
+  season.games.forEach(g=>{
+    const r=g.result, scored=r&&r.us!==null&&r.them!==null;
+    const res=scored?`<b class="${r.result==='W'?'diff-pos':'diff-neg'}">${r.result||''}</b> ${r.us}&ndash;${r.them}`:(r&&r.result?`<b class="${r.result==='W'?'diff-pos':'diff-neg'}">${r.result}</b>`:'<span class="muted">—</span>');
+    h+=`<tr class="clickable-row box-row" data-gid="${g.game_id}" title="View box score">
+      <td>${g.date?esc(niceDate(g.date)):'<span class="muted">—</span>'}</td>
+      <td><b>${esc(g.label)}</b>${g.is_playoff?'<span class="playoff-tag">Playoff</span>':''}</td>
+      <td>${g.opponent?esc(g.opponent):'<span class="muted">—</span>'}</td><td>${res}</td>
+      <td>${g.h}-${g.ab}${g.hr?`, ${g.hr} HR`:''} <span class="muted">&middot; ${g.batters} batters</span></td>
+      <td>${esc(g.pog.name)} <span class="muted">&middot; ${esc(g.pog.line)}</span></td></tr>`;
+  });
+  box.innerHTML=h+'</tbody></table>';
 }
 document.getElementById('standings-season').addEventListener('change',async e=>{
   const sid=e.target.value; _standArchived=!!sid;
   renderStandings(sid?await fetch('/api/standings?season_id='+sid).then(r=>r.json()):_standings);
 });
+document.getElementById('schedule-current-btn').addEventListener('click',()=>{
+  const sel=document.getElementById('schedule-season');
+  sel.value=''; sel.dispatchEvent(new Event('change'));
+});
 document.getElementById('schedule-season').addEventListener('change',async e=>{
   const sid=e.target.value; _schedArchived=!!sid;
+  document.getElementById('schedule-current-btn').style.display=sid?'':'none';
   if(!sid) return renderSchedule(_games);
+  if(!_leagueSeasons.some(s=>String(s.id)===sid)) return renderSeasonBoxList(sid);
   const [g,st]=await Promise.all([fetch('/api/games?season_id='+sid).then(r=>r.json()),fetch('/api/standings?season_id='+sid).then(r=>r.json())]);
   renderSchedule(g,st);
 });
