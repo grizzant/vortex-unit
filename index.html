@@ -262,7 +262,7 @@ input[type=number]::-webkit-inner-spin-button,input[type=number]::-webkit-outer-
 .aw-table small{color:var(--sub);font-variant-numeric:tabular-nums}
 .hof-plaque{background:linear-gradient(160deg,rgba(245,197,24,.14),rgba(245,197,24,.02));border:1px solid var(--yellow);border-radius:12px;padding:18px 20px}
 .hof-plaque h3{margin:0;font-size:22px}
-.hof-plaque .pp-tiles{margin:12px 0}
+.hof-plaque .pp-tiles{margin:12px 0;grid-template-columns:repeat(auto-fill,minmax(130px,1fr))}
 .ms-card{background:var(--bg);border:1px solid var(--line);border-radius:10px;padding:12px 14px;font-size:13px}
 .ms-card.team{border-color:var(--accent)}
 .ms-top{display:flex;justify-content:space-between;gap:8px;align-items:baseline}
@@ -525,7 +525,7 @@ input[type=number]::-webkit-inner-spin-button,input[type=number]::-webkit-outer-
 </div>
 
 <script>
-window.VU_PUBLIC={updated:"20261008114445",updatedText:"Oct 8, 2026 11:44 AM"};
+window.VU_PUBLIC={updated:"20261008115117",updatedText:"Oct 8, 2026 11:51 AM"};
 (function(){
   const realFetch=window.fetch.bind(window);
   const routes=[
@@ -2830,11 +2830,12 @@ function renderRecords(box){
       const name=Object.fromEntries(H.award_defs.map(d=>[d.key,d.title]));
       h+=`<div class="pp-grid">${H.hof.map(p=>{
         const L=p.line, sp=p.seasons;
-        const tiles=L?[['G',L.g,0],['H',L.h,0],['HR',L.hr,0],['BA',L.ba,3],['OBP',L.obp,3],['SLG',L.slg,3],['OPS',L.ops,3],['WAR',L.war,1]]:[];
+        // honorary plaques bring their own tiles (shown as written) and aren't linked to a player page
+        const tiles=p.tiles||(L?[['G',L.g,0],['H',L.h,0],['HR',L.hr,0],['BA',L.ba,3],['OBP',L.obp,3],['SLG',L.slg,3],['OPS',L.ops,3],['WAR',L.war,1]]:[]);
         const tr=Object.entries(p.trophies).map(([k,n])=>(n>1?n+'&times; ':'')+esc(name[k]||k));
-        return `<div class="hof-plaque"><h3>&#127942; ${pLink(p)}</h3>
+        return `<div class="hof-plaque"><h3>&#127942; ${p.player_id?pLink(p):esc(p.name)}</h3>
           <div class="pp-sub">Vortex Unit Hall of Fame${sp.length?` &middot; ${esc(sp[0])}${sp.length>1?' &ndash; '+esc(sp[sp.length-1]):''}`:''}</div>
-          <div class="pp-tiles">${tiles.map(([l,v,d])=>`<div class="pp-tile"><b>${ppFmt(v,d)}</b><span>${l}</span></div>`).join('')}</div>
+          <div class="pp-tiles">${tiles.map(([l,v,d])=>`<div class="pp-tile"><b>${d===undefined?esc(v):ppFmt(v,d)}</b><span>${esc(l)}</span></div>`).join('')}</div>
           ${p.leads.length?`<div class="pp-leads">${p.leads.map(l=>`<span class="pp-lead">&#9733; ${esc(l)}</span>`).join('')}</div>`:''}
           ${tr.length?`<p class="muted" style="font-size:12px;margin:12px 0 0">${tr.join(' &middot; ')}</p>`:''}</div>`;
       }).join('')}</div>`;
