@@ -525,7 +525,7 @@ input[type=number]::-webkit-inner-spin-button,input[type=number]::-webkit-outer-
 </div>
 
 <script>
-window.VU_PUBLIC={updated:"20261008115117",updatedText:"Oct 8, 2026 11:51 AM"};
+window.VU_PUBLIC={updated:"20261009083206",updatedText:"Oct 9, 2026 8:32 AM"};
 (function(){
   const realFetch=window.fetch.bind(window);
   const routes=[
@@ -2244,7 +2244,7 @@ function showMetaForm(){
       opponent:document.getElementById('mf-opp').value,
       is_playoff:document.getElementById('mf-playoff').checked,
     })});
-    markStatsDirty();   // moving a game in or out of the playoffs changes the totals
+    markStatsDirty();   // the game's label, date or opponent shows up in the history tabs
     openGame(g.id);
   });
 }
@@ -2575,7 +2575,7 @@ function renderPlayerPage(){
       <td>${ppFmt(g.ops,3)}</td></tr>`;
   });
   if(!log.length) h+=`<tr><td colspan="13" class="muted">No games.</td></tr>`;
-  h+=`</tbody></table></div><p class="muted" style="font-size:11px;margin:8px 0 0">Playoff games are listed here but left out of season and career totals.</p></div>`;
+  h+=`</tbody></table></div><p class="muted" style="font-size:11px;margin:8px 0 0">Playoff games count toward season and career totals.</p></div>`;
 
   body.innerHTML=h;
   body.querySelectorAll('#pp-scopes .pill').forEach(b=>b.addEventListener('click',()=>{
@@ -2715,7 +2715,7 @@ function renderLeaders(box){
   h+=`<div class="card"><div class="pill-bar" id="ld-scopes">${scopes.map(s=>
       `<button class="pill${String(s.id)===String(_ldScope)?' active':''}" data-id="${s.id}">${esc(s.name)}</button>`).join('')}</div>
     <div class="hub-grid">${sc.boards.map(b=>lbCard(b.title,b.rows,b.dec,b.qualified?'qualified':'')).join('')}</div>
-    <p class="muted hub-note">Qualified = played in more than a quarter of the most games anyone played in that span. Playoff games aren&rsquo;t counted.</p></div>`;
+    <p class="muted hub-note">Qualified = played in more than a quarter of the most games anyone played in that span. Playoff games count.</p></div>`;
   h+=`<div class="card"><p class="section-heading" style="margin-top:0">Current Streaks</p>
     <div class="hub-grid">${_hub.streaks.map(s=>lbCard(s.title,s.current,0,s.unit,r=>'since '+esc(whenText(r.start,true)))).join('')}</div>
     <p class="muted hub-note">Counted over the games a player was at, across seasons; missing a week doesn&rsquo;t end a streak. All-time bests are in the Record Book.</p></div>`;
@@ -2785,7 +2785,7 @@ function renderRecords(box){
   if(_rbView==='records'){
     h+=`<div class="pp-grid"><div>${recTable('Single Game',R.game,'Click a date for the box score.')}${recTable('Single Game &middot; Team',R.team,'Runs and margin come from league scores, so only seasons with a schedule on file count.')}</div>
       <div>${recTable('Single Season',R.season)}${recTable('Career',R.career)}</div></div>
-      <p class="muted hub-note" style="margin-top:0">Rate records need a qualified hitter. Playoff games aren&rsquo;t counted, and games entered only as season totals can&rsquo;t hold a single-game record.</p>`;
+      <p class="muted hub-note" style="margin-top:0">Rate records need a qualified hitter. Playoff games count, and games entered only as season totals can&rsquo;t hold a single-game record.</p>`;
   } else if(_rbView==='streaks'){
     h+=`<div class="card"><p class="section-heading" style="margin-top:0">Longest Streaks</p>
       <div class="hub-grid">${H.streaks.map(s=>lbCard(s.title,s.record,0,s.unit,
@@ -2887,7 +2887,7 @@ function renderMilestones(box){
       ${_hub.cycle_watch.map(c=>`<div class="ms-row"><span class="ico">&#9678;</span><div>${pLink(c)} <span class="muted">&middot; ${esc(c.line)}</span> &mdash; a ${esc(c.missing)} short
         <div class="sub">${gameWhen(c.when)}</div></div></div>`).join('')}`;
   }
-  h+=`</div></div><p class="muted hub-note" style="margin-top:0">Perfect Night = 5 or more trips to the plate without making an out. Playoff games aren&rsquo;t counted.</p>`;
+  h+=`</div></div><p class="muted hub-note" style="margin-top:0">Perfect Night = 5 or more trips to the plate without making an out. Playoff games count.</p>`;
   box.innerHTML=h;
   const more=document.getElementById('ms-more'); if(more) more.addEventListener('click',()=>{_msAllReached=!_msAllReached; renderMilestones(box);});
   const fm=document.getElementById('feats-more'); if(fm) fm.addEventListener('click',()=>{_msAllFeats=!_msAllFeats; renderMilestones(box);});
@@ -2933,7 +2933,6 @@ async function openBoxScore(gid){
   const notes=[...B.feats.map(f=>`<b>${esc(f.name)}</b>: ${f.tags.map(esc).join(', ')} <span class="muted">(${esc(f.line)})</span>`),
                ...B.milestones.map(m=>`<b>${esc(m.name)}</b>: ${esc(m.text)}`)];
   if(notes.length) h+=`<div class="modal-section-title">Game Notes</div><ul class="box-notes">${notes.map(n=>`<li>${n}</li>`).join('')}</ul>`;
-  if(g.is_playoff) h+='<p class="modal-formula">Playoff games are kept per game but left out of season and career totals.</p>';
   body.innerHTML=h;
 }
 
