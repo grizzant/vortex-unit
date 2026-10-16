@@ -155,8 +155,9 @@ tr.editable-row td input{width:52px}
 .lu-cell.cell-sel{outline:2px solid var(--yellow);outline-offset:-2px;background:#2a2540}
 .lu-cell.cell-sel .pos-input:not(.pos-bad){background:transparent}
 .lu-cell.cell-flash{background:#3a3160}
-.lu-summary{width:auto;min-width:520px;margin-top:4px}
-.lu-summary td,.lu-summary th{padding:5px 9px}
+.lu-foot td{padding:5px 4px;font-size:12px;vertical-align:top}
+.lu-foot tr:first-child td{border-top:2px solid var(--accent)}
+.lu-foot .missing-pos{max-width:64px;white-space:normal}
 .winner-select{max-width:250px;font-size:12px}
 .se-note{margin-top:16px;padding:10px 14px;border:1px solid var(--line);border-radius:8px;background:#15121f;font-size:13px;color:var(--sub)}
 .totals-row td{border-top:2px solid var(--accent);font-weight:700}
@@ -525,7 +526,7 @@ input[type=number]::-webkit-inner-spin-button,input[type=number]::-webkit-outer-
 </div>
 
 <script>
-window.VU_PUBLIC={updated:"20261012094011",updatedText:"Oct 12, 2026 9:40 AM"};
+window.VU_PUBLIC={updated:"20261016104426",updatedText:"Oct 16, 2026 10:44 AM"};
 (function(){
   const realFetch=window.fetch.bind(window);
   const routes=[
@@ -1155,7 +1156,7 @@ function LineupEditor(tableEl,summaryEl,onChange){
         </td></tr>`;
     });
     if(!ed.rows.length) h+=`<tr><td colspan="${INNINGS+4}" class="muted">No players yet.</td></tr>`;
-    tableEl.innerHTML=h+'</tbody></table>';
+    tableEl.innerHTML=h+'</tbody><tfoot class="lu-foot"></tfoot></table>';
     ed.renderSummary();
   };
 
@@ -1176,16 +1177,14 @@ function LineupEditor(tableEl,summaryEl,onChange){
         :need>0?`<span style="color:var(--win)">&#10003; done</span>`
         :'<span class="muted">&mdash;</span>'}</td>`;
     }
-    let h=`<p class="muted" style="margin:0 0 6px">${n} player${n===1?'':'s'}${
-      need>0?` &middot; ${need} bench${need===1?'':'es'} needed each inning`:''}</p>
-      <table class="lu-summary"><thead><tr><th></th>`;
-    for(let i=1;i<=INNINGS;i++) h+=`<th>Inn ${i}</th>`;
-    h+=`</tr></thead><tbody>
-      <tr><td class="muted">Missing positions</td>${miss}</tr>
-      <tr><td class="muted">Benched</td>${bench}</tr>
-      <tr><td class="muted">Benches needed</td>${left}</tr>
-    </tbody></table>`;
-    summaryEl.innerHTML=h;
+    // the per-inning summary sits in the lineup table's footer, under each inning's column
+    const foot=tableEl.querySelector('tfoot.lu-foot');
+    if(foot) foot.innerHTML=`
+      <tr><td></td><td class="muted">Missing positions</td>${miss}<td colspan="2"></td></tr>
+      <tr><td></td><td class="muted">Benched</td>${bench}<td colspan="2"></td></tr>
+      <tr><td></td><td class="muted">Benches needed</td>${left}<td colspan="2"></td></tr>`;
+    summaryEl.innerHTML=`<p class="muted" style="margin:0">${n} player${n===1?'':'s'}${
+      need>0?` &middot; ${need} bench${need===1?'':'es'} needed each inning`:''}</p>`;
   };
 
   // ── spreadsheet-style selection: click, drag, Shift+click, Cmd/Ctrl+click ──────────
