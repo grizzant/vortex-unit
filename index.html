@@ -73,6 +73,13 @@ tr:last-child td{border-bottom:none}
 .po-name{min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
 .po-rec{margin-left:auto;color:var(--sub);font-size:12px;white-space:nowrap}
 .po-hunt{font-size:12px;margin:12px 0 0}
+.po-team.won .po-name{font-weight:700}
+.po-team.lost{opacity:.5}
+.po-score{margin-left:auto;font-weight:700;font-variant-numeric:tabular-nums}
+.po-check{color:var(--win);font-size:12px}
+.po-when{float:right;font-weight:600;letter-spacing:0;text-transform:none}
+.po-champ{max-width:640px;margin:0 0 14px;padding:10px 14px;border:1px solid var(--yellow);border-radius:10px;background:rgba(245,197,24,.08);font-size:14px}
+.po-champ.vortex b{color:var(--yellow)}
 @media(max-width:560px){.po-bracket{grid-template-columns:1fr}.po-join,.po-line{display:none}.po-final{margin-top:14px}}
 .muted{color:var(--sub)}
 .diff-pos{color:var(--win)}
@@ -203,6 +210,8 @@ input[type=number]::-webkit-inner-spin-button,input[type=number]::-webkit-outer-
 .ls-odds b{display:block;font-size:20px;color:var(--ink);font-variant-numeric:tabular-nums}
 .season-pick-row{display:flex;align-items:center;gap:8px;margin-bottom:14px;font-size:12px}
 .empty-state{color:var(--sub);font-size:13px;padding:18px 4px}
+.offseason{text-align:center;padding:30px 12px 26px}
+.offseason .save-btn{display:inline-block;padding:7px 15px;font-size:13px;text-decoration:none}
 .sync-bar{display:flex;align-items:center;gap:12px;flex-wrap:wrap;margin-bottom:14px;font-size:12px}
 .sync-paste{width:100%;min-height:110px;background:var(--bg);color:var(--ink);border:1px solid var(--line);border-radius:8px;padding:9px 11px;font-size:12px;font-family:inherit;resize:vertical}
 .sync-paste:focus{outline:none;border-color:var(--accent)}
@@ -315,7 +324,8 @@ input[type=number]::-webkit-inner-spin-button,input[type=number]::-webkit-outer-
     <p class="section-heading">Schedule &amp; Results</p>
     <div class="card">
       <div class="season-pick-row" id="schedule-season-row" style="display:none"><label class="muted" for="schedule-season">Season</label><select class="styled" id="schedule-season"></select>
-        <button class="btn btn-sm" id="schedule-current-btn" style="display:none">Current Season</button></div>
+        <button class="btn btn-sm" id="schedule-current-btn" style="display:none">Current Season</button>
+        <a class="btn btn-sm" id="schedule-recap-link" target="_blank" style="display:none;text-decoration:none">Season Recap</a></div>
       <div id="schedule-container"></div></div>
   </div>
   <div id="tab-enter" class="tab-section">
@@ -326,6 +336,7 @@ input[type=number]::-webkit-inner-spin-button,input[type=number]::-webkit-outer-
         <span class="muted">Opens the league schedule &mdash; copy the whole page (&#8984;A, &#8984;C) and paste it in</span>
         <span style="margin-left:auto;display:flex;align-items:center;gap:10px">
           <span class="muted">Season: <b id="enter-season-name" style="color:var(--ink)"></b></span>
+          <button class="btn btn-danger" id="end-season-btn" style="display:none" title="Lock in the final standings and awards and make the season recap">End Season</button>
           <button class="btn" id="new-season-btn">Start New Season</button>
         </span>
       </div>
@@ -470,6 +481,31 @@ input[type=number]::-webkit-inner-spin-button,input[type=number]::-webkit-outer-
       </table></div>
     </div>
   </div>
+  <div id="tab-payments" class="tab-section">
+    <p class="section-heading">Payments</p>
+    <div class="card">
+      <div class="inline-form">
+        <div class="field">
+          <label for="pay-total">Season total ($)</label>
+          <input class="styled" id="pay-total" type="number" min="0" step="0.01" placeholder="0.00" style="width:120px">
+        </div>
+        <div class="field">
+          <label for="pay-name">Add player</label>
+          <input class="styled" id="pay-name" list="pay-roster" placeholder="Player name" style="width:180px">
+          <datalist id="pay-roster"></datalist>
+        </div>
+        <button class="save-btn" id="pay-add">Add</button>
+        <button class="btn" id="pay-add-active">Add all active players</button>
+        <span style="flex:1"></span>
+        <button class="btn btn-danger" id="pay-clear">Clear for new season</button>
+      </div>
+      <div id="pay-summary" style="margin-bottom:12px"></div>
+      <div style="overflow-x:auto"><table>
+        <thead><tr><th>Player</th><th>Owes</th><th>Paid</th><th></th></tr></thead>
+        <tbody id="pay-tbody"></tbody>
+      </table></div>
+    </div>
+  </div>
 </main>
 
 <div id="season-modal-overlay" class="modal-overlay hidden">
@@ -526,7 +562,7 @@ input[type=number]::-webkit-inner-spin-button,input[type=number]::-webkit-outer-
 </div>
 
 <script>
-window.VU_PUBLIC={updated:"20261016104426",updatedText:"Oct 16, 2026 10:44 AM"};
+window.VU_PUBLIC={updated:"20261028131845",updatedText:"Oct 28, 2026 1:18 PM"};
 (function(){
   const realFetch=window.fetch.bind(window);
   const routes=[
@@ -573,6 +609,7 @@ const TABS = [
   {id:'milestones', label:'Milestones'},
   {id:'stat-entry', label:'Stat Entry'},
   {id:'players',    label:'Players'},
+  {id:'payments',   label:'Payments'},   // private: never in PUBLIC_TABS, and its data stays in softball.db
 ];
 
 // ─── nav ────────────────────────────────────────────────────────────────────
@@ -603,6 +640,7 @@ function switchTab(id){
   const go=()=>{
     if(id==='stats'&&_dirty.stats){_dirty.stats=false; _allStats={}; loadStatsTable(_statsCurrentSeason);}
     if(id==='players'&&_dirty.players){_dirty.players=false; loadPlayers();}
+    if(id==='payments') loadPayments();
     if(id==='auto-lineup'&&_dirty.auto){_dirty.auto=false; loadAutoStats();}
     if(HUB_TABS.has(id)) renderHubTab(id);
   };
@@ -647,6 +685,25 @@ function groupByWeek(games){
   return w;
 }
 function isPlayed(g){return (g.away_score!==null&&g.home_score!==null)||!!g.winner;}
+// Schedule / Enter Results sections: each regular-season week, then each playoff bracket
+function scheduleSections(games){
+  const out=[], at={};
+  const weeks=groupByWeek(games.filter(g=>!g.playoff));
+  Object.keys(weeks).sort((a,b)=>a-b).forEach(w=>out.push({title:'Week '+w,games:weeks[w]}));
+  games.filter(g=>g.playoff).forEach(g=>{
+    if(!at[g.playoff]){at[g.playoff]={title:'Playoffs &middot; '+esc(g.playoff),games:[]}; out.push(at[g.playoff]);}
+    at[g.playoff].games.push(g);
+  });
+  return out;
+}
+// "G3 · Final" next to a playoff game's field
+function playoffTag(g){
+  if(!g.playoff) return '';
+  const fin=/championship/i.test(g.playoff_round||'');
+  return `<span class="playoff-tag" title="${esc(g.playoff_round||'')}">${esc(g.game_no||'')}${fin?(g.game_no?' &middot; ':'')+'Final':''}</span>`;
+}
+// a playoff side the league hasn't filled in yet ("4th Seed", "G1 Winner")
+function isSlot(g,side){return !!(g.playoff&&g[side+'_slot']&&/ Seed$|^G\d+ (Winner|Loser)$/i.test(g[side+'_team']));}
 
 // sort helper
 function makeSortable(tbodyId, data, renderRow, defaultCol, defaultDesc=true){
@@ -672,29 +729,56 @@ function standVal(s,key){
 // Top bracket if the playoffs started today: seeds 1-4 by standings place (which already
 // follows the league tiebreakers), 1 v 4 and 2 v 3, winners meet in the championship.
 const PLAYOFF_SPOTS=4;
-function playoffPicture(standings){
+// Seeds from the standings (1 v 4, 2 v 3); once the league's playoff games are on the schedule,
+// their results fill the bracket in: scores, winners into the Championship, then the champion.
+function playoffPicture(standings,games=[],archived=false){
   const seeds=[...standings].sort((a,b)=>a.place-b.place);
   if(seeds.length<PLAYOFF_SPOTS||!seeds.some(s=>s.gp)) return '';
-  const team=n=>{
-    const s=seeds[n-1], v=s.team===VORTEX;
-    return `<div class="po-team ${v?'vortex':''}"><span class="po-seed">${n}</span>
-      <span class="po-name">${v?esc(s.team):`<span class="team-link" data-team="${esc(s.team)}">${esc(s.team)}</span>`}</span>
-      ${s.clinch?`<span class="clinch-tag ${s.clinch}" style="margin-left:0" title="${CLINCH_TEXT[s.clinch]}">${s.clinch}</span>`:''}
-      <span class="po-rec">${s.w}-${s.l}</span></div>`;
+  const po=games.filter(g=>g.playoff==='Championship');
+  if(archived&&!po.length) return '';
+  const regular=games.filter(g=>!g.playoff);
+  const done=regular.length>0&&regular.every(isPlayed);
+  const placeOf=Object.fromEntries(seeds.map(s=>[s.team,s.place]));
+  const isFinal=g=>/championship/i.test(g.playoff_round||'')||g.game_no==='G3';
+  const between=(a,b)=>po.find(g=>!isFinal(g)&&[g.away_team,g.home_team].includes(a)&&[g.away_team,g.home_team].includes(b));
+  const scoreFor=(g,t)=>!g||!isPlayed(g)?'':g.away_score!==null&&g.home_score!==null?(t===g.away_team?g.away_score:g.home_score):(determineWinnerJs(g)===t?'W':'L');
+  const row=(t,g)=>{
+    if(!t) return '';
+    const s=seeds.find(x=>x.team===t), v=t===VORTEX, w=g&&isPlayed(g)?determineWinnerJs(g):null;
+    const state=w?(w===t?' won':' lost'):'';
+    const name=v||archived?esc(t):`<span class="team-link" data-team="${esc(t)}">${esc(t)}</span>`;
+    const tail=g&&isPlayed(g)?`<span class="po-score">${scoreFor(g,t)}</span>`:
+      `${s&&s.clinch&&!done?`<span class="clinch-tag ${s.clinch}" style="margin-left:0" title="${CLINCH_TEXT[s.clinch]}">${s.clinch}</span>`:''}<span class="po-rec">${s?s.w+'-'+s.l:''}</span>`;
+    return `<div class="po-team${v?' vortex':''}${state}"><span class="po-seed">${placeOf[t]||''}</span>
+      <span class="po-name">${name}</span>${w===t?'<span class="po-check">&#10003;</span>':''}${tail}</div>`;
   };
-  const semi=(a,b)=>`<div class="po-match"><div class="po-round">Semifinal</div>${team(a)}${team(b)}</div>`;
-  const tbd=(a,b)=>`<div class="po-team"><span class="po-name muted">Winner of ${a} / ${b}</span></div>`;
-  const hunt=seeds.slice(PLAYOFF_SPOTS).filter(s=>s.clinch!=='e');
-  return `<div class="po-wrap"><p class="section-heading">Playoff Picture</p>
-    <p class="muted po-sub">If the playoffs started today &mdash; top ${PLAYOFF_SPOTS} bracket</p>
+  const tbd=txt=>`<div class="po-team"><span class="po-name muted">${txt}</span></div>`;
+  const label=g=>g?`${esc(g.game_no||'')} &middot; ${esc(g.date_disp)} ${esc(g.time)}`:'';
+  const semi=(a,b)=>{
+    const A=seeds[a-1].team, B=seeds[b-1].team, g=between(A,B);
+    return {g, winner:g&&isPlayed(g)?determineWinnerJs(g):null,
+      html:`<div class="po-match"><div class="po-round">Semifinal${g?`<span class="po-when">${label(g)}</span>`:''}</div>${row(A,g)}${row(B,g)}</div>`};
+  };
+  const s1=semi(1,4), s2=semi(2,3);
+  const fin=po.find(isFinal), champ=fin&&isPlayed(fin)?determineWinnerJs(fin):null;
+  const finTeam=(sm,a,b)=>sm.winner?row(sm.winner,fin&&[fin.away_team,fin.home_team].includes(sm.winner)?fin:null):tbd(`Winner of ${a} / ${b}`);
+  const started=po.some(isPlayed);
+  const sub=champ?`${esc(champ)} won the championship`:started?'Playoffs in progress':
+    po.length&&done?`Final seeds${po[0].date_disp?' &mdash; playoffs '+esc(po[0].date_disp):''}`:
+    `If the playoffs started today &mdash; top ${PLAYOFF_SPOTS} bracket`;
+  const hunt=done?[]:seeds.slice(PLAYOFF_SPOTS).filter(s=>s.clinch!=='e');
+  return `<div class="po-wrap"><p class="section-heading">${po.length&&done?'Playoffs':'Playoff Picture'}</p>
+    <p class="muted po-sub">${sub}</p>
+    ${champ?`<div class="po-champ${champ===VORTEX?' vortex':''}">&#127942; <b>${esc(champ)}</b> &mdash; ${(standings.find(x=>x.team===champ)||{}).place?_ordinal(placeOf[champ])+' seed, ':''}champions</div>`:''}
     <div class="po-bracket">
-      <div class="po-semis">${semi(1,4)}${semi(2,3)}</div>
+      <div class="po-semis">${s1.html}${s2.html}</div>
       <div class="po-join"><i></i><b></b><i></i></div><div class="po-line"></div>
-      <div class="po-final"><div class="po-match"><div class="po-round">Championship</div>${tbd(1,4)}${tbd(2,3)}</div></div>
+      <div class="po-final"><div class="po-match"><div class="po-round">Championship${fin?`<span class="po-when">${label(fin)}</span>`:''}</div>${finTeam(s1,1,4)}${finTeam(s2,2,3)}</div></div>
     </div>
     ${hunt.length?`<p class="muted po-hunt">Still alive: ${hunt.map(s=>`${esc(s.team)} (${s.w}-${s.l}${s.elim!=null&&s.elim!=='-'?', E# '+s.elim:''})`).join(', ')}</p>`:''}
   </div>`;
 }
+function _ordinal(n){const v=n%100; return n+(v>=11&&v<=13?'th':({1:'st',2:'nd',3:'rd'}[n%10]||'th'));}
 const CLINCH_TEXT={z:'Clinched 1 seed',x:'Clinched playoffs',e:'Eliminated'};   // top 4 make the playoffs
 function renderStandings(standings){
   if(standings) _standData=standings;
@@ -729,7 +813,7 @@ function renderStandings(standings){
   });
   h+='</tbody></table>';
   if(sorted.some(s=>s.clinch||(s.elim??'-')!=='-')) h+='<p class="muted clinch-legend">'+Object.entries(CLINCH_TEXT).map(([k,t])=>`<span class="clinch-tag ${k}">${k}</span>${t}`).join('')+'<b style="margin:0 4px 0 12px">E#</b>Elimination number: their losses plus wins by the team they are chasing for the last spot that knock them out</p>';
-  if(!_standArchived) h+=playoffPicture(_standData);
+  h+=playoffPicture(_standData,_standArchived?_standGames:_games,_standArchived);
   const box=document.getElementById('standings-container');
   box.innerHTML=h;
   box.querySelectorAll('th[data-col]').forEach(th=>th.addEventListener('click',()=>{
@@ -742,7 +826,7 @@ function renderStandings(standings){
   else box.querySelectorAll('.team-link').forEach(el=>el.addEventListener('click',()=>openTeamModal(el.dataset.team)));
   if(!_standData.length) box.innerHTML='<p class="empty-state">No results yet this season.</p>';
 }
-let _standData=[];
+let _standData=[], _standGames=[];   // the archived season's games, for its playoff bracket
 let _standArchived=false, _schedArchived=false;   // viewing a past season (from the Season dropdown)
 function stripTeamLinks(box){ box.querySelectorAll('.team-link').forEach(el=>el.replaceWith(document.createTextNode(el.textContent))); }
 
@@ -750,19 +834,19 @@ function stripTeamLinks(box){ box.querySelectorAll('.team-link').forEach(el=>el.
 function renderSchedule(games,standings=_standings){
   // one table for the whole season so every week's columns line up; scoreboard style:
   // away team (right-aligned) | score | home team (left-aligned)
-  const weeks=groupByWeek(games);
   const rank=Object.fromEntries((standings||[]).map(s=>[s.team,s.place]));   // standings place, shown before each name
   let anyBox=false;
-  let h=`<table class="grid-fixed sched"><colgroup><col style="width:70px"><col style="width:90px"><col style="width:120px">
+  let h=`<table class="grid-fixed sched"><colgroup><col style="width:70px"><col style="width:90px"><col style="width:150px">
       <col><col style="width:104px"><col></colgroup>
     <thead><tr><th>Date</th><th>Time</th><th>Location</th><th class="sched-away">Away</th><th class="sched-mid"></th><th>Home</th></tr></thead><tbody>`;
-  Object.keys(weeks).sort((a,b)=>a-b).forEach(w=>{
-    h+=`<tr class="week-row"><td colspan="6">Week ${w}</td></tr>`;
-    weeks[w].forEach(g=>{
+  scheduleSections(games).forEach(sec=>{
+    h+=`<tr class="week-row"><td colspan="6">${sec.title}</td></tr>`;
+    sec.games.forEach(g=>{
       const played=isPlayed(g), winner=played?determineWinnerJs(g):null;
       // Vortex Unit is always boxed: yellow if we won, white if we lost, plain until it's played
       const result=played?(winner===VORTEX?' won':' lost'):'';
-      const nameCell=t=>{
+      const nameCell=(t,side)=>{
+        if(isSlot(g,side)) return `<span class="muted"><i>${esc(t)}</i></span>`;
         const n=t===VORTEX?`<span class="vu-ring${result}">${esc(t)}</span>`:teamNameLink(t);
         const r=rank[t]?`<span class="team-rank">${rank[t]}</span>`:'';
         return r+(winner===t&&t!==VORTEX?`<span class="winner">${n}</span>`:n);
@@ -780,8 +864,8 @@ function renderSchedule(games,standings=_standings){
       if(box) anyBox=true;
       h+=`<tr${box?` class="clickable-row box-row" data-gid="${box}" title="View box score"`:''}>
         <td>${g.date_disp}</td><td class="muted">${g.time}</td>
-        <td class="muted">${esc(g.location||'')}</td>
-        <td class="sched-away">${nameCell(g.away_team)}</td><td class="sched-mid">${mid}</td><td>${nameCell(g.home_team)}</td>
+        <td class="muted">${esc(g.location||'')}${playoffTag(g)}</td>
+        <td class="sched-away">${nameCell(g.away_team,'away')}</td><td class="sched-mid">${mid}</td><td>${nameCell(g.home_team,'home')}</td>
       </tr>`;
     });
   });
@@ -991,25 +1075,24 @@ document.getElementById('team-modal-overlay').addEventListener('click',e=>{
 // The winner gets a yellow box: automatically from the score, or (no score / forfeit) by
 // clicking a team. Score boxes then show W / L.
 function renderEnter(games){
-  const weeks=groupByWeek(games);
   // same scoreboard layout as the Schedule: away (right-aligned) | score boxes | home
-  let h=`<table class="grid-fixed sched"><colgroup><col style="width:60px"><col style="width:80px"><col style="width:110px">
+  let h=`<table class="grid-fixed sched"><colgroup><col style="width:60px"><col style="width:80px"><col style="width:140px">
       <col><col style="width:136px"><col><col style="width:90px"><col style="width:132px"></colgroup>
     <thead><tr><th>Date</th><th>Time</th><th>Location</th><th class="sched-away">Away</th><th class="sched-mid"></th><th>Home</th><th></th><th></th></tr></thead><tbody>`;
-  Object.keys(weeks).sort((a,b)=>a-b).forEach(w=>{
-    h+=`<tr class="week-row"><td colspan="8">Week ${w}</td></tr>`;
-    weeks[w].forEach(g=>{
+  scheduleSections(games).forEach(sec=>{
+    h+=`<tr class="week-row"><td colspan="8">${sec.title}</td></tr>`;
+    sec.games.forEach(g=>{
       const played=isPlayed(g);
       const as=g.away_score!==null?g.away_score:'';
       const hs=g.home_score!==null?g.home_score:'';
       h+=`<tr data-id="${g.id}" data-winner="${esc(g.winner||'')}" data-away="${esc(g.away_team)}" data-home="${esc(g.home_team)}">
         <td>${g.date_disp}</td><td class="muted">${g.time}</td>
-        <td class="muted">${esc(g.location||'')}</td>
-        <td class="sched-away"><span class="team-pick" data-side="away" title="Click to mark as the winner">${esc(g.away_team)}</span></td>
+        <td class="muted">${esc(g.location||'')}${playoffTag(g)}</td>
+        <td class="sched-away"><span class="team-pick${isSlot(g,'away')?' muted':''}" data-side="away" title="Click to mark as the winner">${esc(g.away_team)}</span></td>
         <td class="sched-mid"><span class="score-box score-edit">
           <input class="score-input" type="number" min="0" value="${as}" data-side="away"><span class="dash">&ndash;</span><input class="score-input" type="number" min="0" value="${hs}" data-side="home">
         </span></td>
-        <td><span class="team-pick" data-side="home" title="Click to mark as the winner">${esc(g.home_team)}</span></td>
+        <td><span class="team-pick${isSlot(g,'home')?' muted':''}" data-side="home" title="Click to mark as the winner">${esc(g.home_team)}</span></td>
         <td><span class="played-tag ${played?'done':''}">${played?'Played':'Unplayed'}</span></td>
         <td><button class="save-btn">Save</button><span class="saved-flag">Saved ✓</span></td>
       </tr>`;
@@ -1079,6 +1162,14 @@ function renderEnter(games){
       const tag=row.querySelector('.played-tag');
       tag.textContent=p?'Played':'Unplayed'; tag.classList.toggle('done',p);
       if(!_schedArchived) renderSchedule(_games);
+      // a result can settle the playoff seeds or a final's teams: pick those up from the server
+      if(_games.some(x=>x.playoff)) fetch('/api/games').then(r=>r.json()).then(gs=>{
+        const teams=x=>x.away_team+'|'+x.home_team;
+        const was=Object.fromEntries(_games.map(x=>[x.id,teams(x)]));
+        if(gs.some(x=>x.playoff&&was[x.id]!==teams(x))){
+          _games=gs; renderEnter(_games); if(!_schedArchived) renderSchedule(_games);
+        }
+      });
       fetch('/api/standings').then(r=>r.json()).then(st=>{
         _standings=st; if(!_standArchived) renderStandings(st); if(!_schedArchived) renderSchedule(_games);
       });
@@ -2973,6 +3064,7 @@ let _leagueSeasons=[];
 async function initSeasonPickers(){
   _leagueSeasons=await fetch('/api/league-seasons').then(r=>r.json()).catch(()=>[]);
   const cur=_leagueSeasons.find(s=>s.current);
+  _offseason=(!PUBLIC&&cur&&cur.ended)?cur:null;
   const nm=document.getElementById('enter-season-name'); if(nm) nm.textContent=cur?cur.name:'';
   // Schedule also lists seasons with no league schedule on file but with our own games from
   // Stat Entry, so their box scores can still be opened
@@ -2982,10 +3074,54 @@ async function initSeasonPickers(){
     .map(s=>({id:s.id,name:s.name,current:!!(cur&&cur.id===s.id)}));
   [['standings-season','standings-season-row',_leagueSeasons],['schedule-season','schedule-season-row',sched.length?sched:_leagueSeasons]].forEach(([id,row,list])=>{
     const sel=document.getElementById(id);
-    sel.innerHTML=list.map(s=>`<option value="${s.current?'':s.id}">${esc(s.name)}${s.current?' (current)':''}</option>`).join('');
-    document.getElementById(row).style.display=list.length>1?'flex':'none';
+    // in the offseason the ended season is just another archived one, and "Offseason" is the current view
+    sel.innerHTML=(_offseason?'<option value="">Offseason</option>':'')+list.map(s=>
+      `<option value="${s.current&&!_offseason?'':s.id}">${esc(s.name)}${s.current?(_offseason?' (final)':' (current)'):''}</option>`).join('');
+    document.getElementById(row).style.display=list.length>1||_offseason?'flex':'none';
   });
   document.getElementById('schedule-current-btn').style.display='none';
+  document.getElementById('schedule-recap-link').style.display='none';
+  if(PUBLIC) return;
+  document.getElementById('end-season-btn').style.display=cur&&!_offseason?'':'none';
+  if(_offseason) ['standings','schedule','enter'].forEach(showOffseason);
+}
+
+// ─── end of season ───────────────────────────────────────────────────────────
+// End Season marks the current season over and opens its recap. Until the next season is started,
+// Standings, Schedule and Enter Results show the offseason card instead (local app only).
+let _offseason=null;
+function showOffseason(where){
+  const s=_offseason;
+  document.getElementById(where+'-container').innerHTML=`<div class="offseason"><div style="font-size:36px">&#127942;</div>
+    <p class="modal-title" style="margin:6px 0 4px">${esc(s.name)} is in the books</p>
+    <p class="muted" style="margin:0 auto 18px;max-width:460px">Its final standings and results are under <b>${esc(s.name)} (final)</b> in the Season dropdown.
+      When the next season&rsquo;s league schedule is live, start it here.</p>
+    <div style="display:flex;gap:8px;justify-content:center;flex-wrap:wrap;align-items:center">
+      <a class="save-btn" href="/recap/${s.id}" target="_blank">View Season Recap</a>
+      <button class="btn" data-offseason="new">Start New Season</button>
+      <button class="btn btn-sm" data-offseason="reopen" style="border-color:transparent">Reopen ${esc(s.name)}</button>
+    </div></div>`;
+  if(where==='enter') document.querySelector('#tab-enter .sync-bar').style.display='none';
+}
+if(!PUBLIC){
+  document.getElementById('end-season-btn').addEventListener('click',async()=>{
+    const cur=_leagueSeasons.find(s=>s.current); if(!cur) return;
+    if(!confirm(`End ${cur.name}?\n\nThis locks in the final standings and season awards and makes the season recap to send to the team. `+
+                `You can still fix stats afterwards, and reopen the season if you need to.`)) return;
+    const w=window.open('','_blank');   // opened now, while it's still a click, so it isn't blocked
+    const res=await fetch('/api/end-season',{method:'POST'}), body=await res.json();
+    if(!res.ok){ if(w) w.close(); alert(body.error||'Could not end the season.'); return; }
+    if(w) w.location.href='/recap/'+body.id; else window.open('/recap/'+body.id,'_blank');
+    location.reload();
+  });
+  document.addEventListener('click',async e=>{
+    const b=e.target.closest('[data-offseason]'); if(!b) return;
+    if(b.dataset.offseason==='new') return document.getElementById('new-season-btn').click();
+    if(!confirm(`Reopen ${_offseason.name}? It goes back to being the current season (Enter Results, Sync, Standings).`)) return;
+    const res=await fetch('/api/reopen-season',{method:'POST'});
+    if(!res.ok){ alert((await res.json()).error||'Could not reopen the season.'); return; }
+    location.reload();
+  });
 }
 // A past season with no league schedule on file: our own games from Stat Entry, each opening its box score
 function renderSeasonBoxList(sid){
@@ -3008,7 +3144,10 @@ function renderSeasonBoxList(sid){
 }
 document.getElementById('standings-season').addEventListener('change',async e=>{
   const sid=e.target.value; _standArchived=!!sid;
-  renderStandings(sid?await fetch('/api/standings?season_id='+sid).then(r=>r.json()):_standings);
+  if(!sid&&_offseason) return showOffseason('standings');
+  if(!sid) return renderStandings(_standings);
+  const [st,gs]=await Promise.all([fetch('/api/standings?season_id='+sid).then(r=>r.json()),fetch('/api/games?season_id='+sid).then(r=>r.json())]);
+  _standGames=gs; renderStandings(st);
 });
 document.getElementById('schedule-current-btn').addEventListener('click',()=>{
   const sel=document.getElementById('schedule-season');
@@ -3016,8 +3155,10 @@ document.getElementById('schedule-current-btn').addEventListener('click',()=>{
 });
 document.getElementById('schedule-season').addEventListener('change',async e=>{
   const sid=e.target.value; _schedArchived=!!sid;
-  document.getElementById('schedule-current-btn').style.display=sid?'':'none';
-  if(!sid) return renderSchedule(_games);
+  document.getElementById('schedule-current-btn').style.display=sid&&!_offseason?'':'none';
+  const recap=document.getElementById('schedule-recap-link');
+  recap.style.display=sid&&!PUBLIC?'':'none'; recap.href='/recap/'+sid;
+  if(!sid) return _offseason?showOffseason('schedule'):renderSchedule(_games);
   if(!_leagueSeasons.some(s=>String(s.id)===sid)) return renderSeasonBoxList(sid);
   const [g,st]=await Promise.all([fetch('/api/games?season_id='+sid).then(r=>r.json()),fetch('/api/standings?season_id='+sid).then(r=>r.json())]);
   renderSchedule(g,st);
@@ -3133,6 +3274,80 @@ document.getElementById('sync-check').addEventListener('click',async()=>{
     status.textContent='';
   });
 });
+
+// ─── payments (local only) ──────────────────────────────────────────────────
+// Season dues: a total split evenly across the players listed, each checked off once they pay.
+// Saved in app_state under "payments", which the public site never reads.
+let _pay={total:0,players:[]};
+function savePayments(){
+  fetch('/api/state/payments',{method:'PUT',headers:{'Content-Type':'application/json'},body:JSON.stringify(_pay)});
+}
+async function loadPayments(){
+  if(PUBLIC) return;
+  const [st,roster]=await Promise.all([
+    fetch('/api/state/payments').then(r=>r.json()),
+    fetch('/api/players').then(r=>r.json())]);
+  _pay={total:+st.total||0,players:Array.isArray(st.players)?st.players:[]};
+  _payRoster=roster;
+  document.getElementById('pay-total').value=_pay.total||'';
+  document.getElementById('pay-roster').innerHTML=roster.map(p=>`<option value="${esc(p.name)}">`).join('');
+  renderPayments();
+}
+let _payRoster=[];
+function payShare(){
+  const n=_pay.players.length;
+  return n?Math.round(_pay.total*100/n)/100:0;
+}
+function money(v){return '$'+v.toFixed(2);}
+function renderPayments(){
+  const share=payShare(), n=_pay.players.length, paid=_pay.players.filter(p=>p.paid).length;
+  const tb=document.getElementById('pay-tbody');
+  tb.innerHTML=n?_pay.players.map((p,i)=>`<tr>
+    <td style="${p.paid?'color:var(--sub);text-decoration:line-through':''}">${esc(p.name)}</td>
+    <td style="color:${p.paid?'var(--win)':'var(--ink)'}">${p.paid?'Paid':money(share)}</td>
+    <td><input type="checkbox" data-pay="${i}" ${p.paid?'checked':''} style="width:18px;height:18px;cursor:pointer"></td>
+    <td><button class="btn btn-sm btn-danger" data-pay-rm="${i}">Remove</button></td>
+  </tr>`).join(''):'<tr><td colspan="4" class="empty-state">No players yet &mdash; add the ones splitting the season cost.</td></tr>';
+  const out=Math.round(share*(n-paid)*100)/100;
+  document.getElementById('pay-summary').innerHTML=n?
+    `<b>${money(share)}</b> each &middot; ${paid} of ${n} paid &middot; collected <b style="color:var(--win)">${money(share*paid)}</b> &middot; still owed <b style="color:${out?'var(--loss)':'var(--win)'}">${money(out)}</b>`:'';
+}
+if(!PUBLIC){
+  document.getElementById('pay-total').addEventListener('input',e=>{
+    _pay.total=Math.max(0,parseFloat(e.target.value)||0); renderPayments(); savePayments();
+  });
+  const addPlayer=name=>{
+    name=name.trim();
+    if(!name||_pay.players.some(p=>p.name.toLowerCase()===name.toLowerCase())) return false;
+    _pay.players.push({name,paid:false}); return true;
+  };
+  const addOne=()=>{
+    const inp=document.getElementById('pay-name');
+    if(addPlayer(inp.value)){renderPayments(); savePayments();}
+    inp.value=''; inp.focus();
+  };
+  document.getElementById('pay-add').addEventListener('click',addOne);
+  document.getElementById('pay-name').addEventListener('keydown',e=>{if(e.key==='Enter') addOne();});
+  document.getElementById('pay-add-active').addEventListener('click',()=>{
+    let added=false;
+    _payRoster.filter(p=>p.active).forEach(p=>{added=addPlayer(p.name)||added;});
+    if(added){renderPayments(); savePayments();}
+  });
+  document.getElementById('pay-tbody').addEventListener('change',e=>{
+    const i=e.target.dataset.pay; if(i===undefined) return;
+    _pay.players[i].paid=e.target.checked; renderPayments(); savePayments();
+  });
+  document.getElementById('pay-tbody').addEventListener('click',e=>{
+    const i=e.target.dataset.payRm; if(i===undefined) return;
+    if(!confirm(`Remove ${_pay.players[i].name} from payments?`)) return;
+    _pay.players.splice(i,1); renderPayments(); savePayments();
+  });
+  document.getElementById('pay-clear').addEventListener('click',()=>{
+    if(!confirm('Clear all payments (players, total and paid checkmarks) to start a new season? This cannot be undone.')) return;
+    _pay={total:0,players:[]}; document.getElementById('pay-total').value='';
+    renderPayments(); savePayments();
+  });
+}
 
 // ─── publish to web ─────────────────────────────────────────────────────────
 if(PUBLIC){
