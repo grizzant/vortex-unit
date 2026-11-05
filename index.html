@@ -364,7 +364,7 @@ input[type=number]::-webkit-inner-spin-button,input[type=number]::-webkit-outer-
     <div class="card" id="lineup-strength"></div>
   </div>
   <div id="tab-auto-lineup" class="tab-section">
-    <p class="section-heading">Auto Lineup</p>
+    <p class="section-heading">Lineup Generator</p>
     <div class="two-col">
       <div class="card">
         <p class="section-heading" style="margin-top:0">Roster</p>
@@ -562,7 +562,7 @@ input[type=number]::-webkit-inner-spin-button,input[type=number]::-webkit-outer-
 </div>
 
 <script>
-window.VU_PUBLIC={updated:"20261029200912",updatedText:"Oct 29, 2026 8:09 PM"};
+window.VU_PUBLIC={updated:"20261104171821",updatedText:"Nov 4, 2026 5:18 PM"};
 (function(){
   const realFetch=window.fetch.bind(window);
   const routes=[
@@ -602,7 +602,7 @@ const TABS = [
   {id:'schedule',   label:'Schedule'},
   {id:'enter',      label:'Enter Results'},
   {id:'lineup',     label:'Lineup'},
-  {id:'auto-lineup',label:'Auto Lineup'},
+  {id:'auto-lineup',label:'Lineup Generator'},
   {id:'stats',      label:'Stats'},
   {id:'leaders',    label:'Leaders'},
   {id:'records',    label:'Record Book'},
@@ -624,11 +624,11 @@ function buildNav(){
     nav.appendChild(btn);
   });
 }
-// Stat Entry changes what Stats / Players / Auto Lineup should show; each refreshes when next opened
+// Stat Entry changes what Stats / Players / Lineup Generator should show; each refreshes when next opened
 const _dirty={stats:false,players:false,auto:false,hub:false};
 function markStatsDirty(){_dirty.stats=_dirty.players=_dirty.auto=_dirty.hub=true;}
 // Team history (/api/hub): feeds Leaders, Record Book and Milestones, and the flame next to hot hitters
-// (shown on Lineup, Auto Lineup, Stats and Players only)
+// (shown on Lineup, Lineup Generator, Stats and Players only)
 const HUB_TABS=new Set(['leaders','records','milestones']);
 let _hub=null;
 const _hot=new Map();   // player id -> their hot streak
@@ -915,7 +915,29 @@ function log5(pA,pB){
   return (pA-pA*pB)/denom;
 }
 
-function buildMatchup(games, standings, opponent){
+// Past seasons' league games and standings, newest first: [{id,name,games,standings}].
+// Their team names are matched to this season's ignoring case and spacing ("FOD Squad" = "Fod Squad").
+let _pastSeasons=[];
+async function loadPastSeasons(){
+  const get=u=>fetch(u).then(r=>r.json());
+  _pastSeasons=await Promise.all(_leagueSeasons.filter(s=>!s.current).map(async s=>{
+    const [games,standings]=await Promise.all([get('/api/games?season_id='+s.id),get('/api/standings?season_id='+s.id)]);
+    return {id:s.id,name:s.name,games,standings};
+  })).catch(()=>[]);
+}
+const teamKey=t=>String(t||'').trim().toLowerCase().replace(/\s+/g,' ');
+function renamePastSeason(s, games, opponent){
+  const names=new Map([VORTEX,opponent,...games.flatMap(g=>[g.home_team,g.away_team])].map(t=>[teamKey(t),t]));
+  const nm=t=>names.get(teamKey(t))||t;
+  return {name:s.name,
+    games:s.games.map(g=>({...g,home_team:nm(g.home_team),away_team:nm(g.away_team),winner:g.winner&&nm(g.winner)})),
+    standings:s.standings.map(r=>({...r,team:nm(r.team)}))};
+}
+
+// Win chance for our next game against `opponent`. This season's results drive it; past seasons
+// (most recent counting most) are the starting point, and fade fast once we've played them this
+// season or have shared opponents to compare against.
+function buildMatchup(games, standings, opponent, past=_pastSeasons){
   const usStand=standings.find(s=>s.team===VORTEX);
   const themStand=standings.find(s=>s.team===opponent);
   const pUs=usStand?usStand.pct:0.5, pThem=themStand?themStand.pct:0.5;
@@ -947,16 +969,54 @@ function buildMatchup(games, standings, opponent){
   }
 
   const pLog5=log5(pUs,pThem);
-  const wLog5=3;
+  // overall records mean little after a game or two, so their weight builds over the first 4 games
+  const minGp=Math.min(usStand?usStand.gp:0, themStand?themStand.gp:0);
+  const wLog5=3*Math.min(1,minGp/4);
   const wH2h=Math.min(h2h.length,4);
   const wCommon=Math.min(commonOpponents.length,6)*0.5;
   let num=pLog5*wLog5, den=wLog5;
   if(h2hPct!==null){num+=h2hPct*wH2h; den+=wH2h;}
   if(commonPct!==null){num+=commonPct*wCommon; den+=wCommon;}
+
+  // past seasons the opponent played in, each half as important as the one after it
+  const pastSeasons=past.map(s=>renamePastSeason(s,games,opponent))
+    .filter(s=>s.standings.some(r=>r.team===opponent))
+    .map(s=>({...s,m:buildMatchup(s.games,s.standings,opponent,[])}));
+  let priorPct=null, wPrior=0;
+  if(pastSeasons.length){
+    let pn=0,pd=0;
+    pastSeasons.forEach((s,i)=>{const w=0.5**i; pn+=s.m.finalPct*w; pd+=w;});
+    priorPct=pn/pd;
+    // 4 at the start of the season; every game against them this season and every shared opponent cuts it
+    wPrior=4/(1+2*h2h.length+commonOpponents.length);
+    num+=priorPct*wPrior; den+=wPrior;
+  }
   let finalPct=den>0?num/den:0.5;
   finalPct=Math.max(0.03,Math.min(0.97,finalPct));
+  const priorShare=den>0?wPrior/den:0;
 
-  return {opponent,usStand,themStand,pUs,pThem,h2h,h2hW,h2hL,h2hPct,commonOpponents,pLog5,finalPct};
+  return {opponent,usStand,themStand,pUs,pThem,h2h,h2hW,h2hL,h2hPct,commonOpponents,pLog5,finalPct,
+    pastSeasons,priorPct,priorShare};
+}
+
+// Our runs minus theirs over head-to-head games with a score; null when none had one
+function h2hRunDiff(h2h){
+  const scored=h2h.filter(g=>g.away_score!==null&&g.home_score!==null);
+  return scored.length?scored.reduce((d,g)=>d+(g.home_team===VORTEX?1:-1)*(g.home_score-g.away_score),0):null;
+}
+function h2hTable(m){
+  let h=`<table><thead><tr><th>Date</th><th>Score</th><th>Result</th></tr></thead><tbody>`;
+  m.h2h.forEach(g=>{
+    const usHome=g.home_team===VORTEX;
+    const usScore=usHome?g.home_score:g.away_score;
+    const themScore=usHome?g.away_score:g.home_score;
+    const won=determineWinnerJs(g)===VORTEX;
+    const scoreTxt=(usScore!==null&&themScore!==null)?`${usScore}-${themScore}`:'(forfeit)';
+    const tag=g.playoff?' <span class="playoff-tag">Playoff</span>':'';
+    h+=`<tr class="h2h-row"><td>${g.date_disp}${tag}</td><td>${scoreTxt}</td><td class="${won?'result-w':'result-l'}">${won?'W':'L'}</td></tr>`;
+  });
+  const diff=h2hRunDiff(m.h2h);
+  return h+`</tbody></table><p class="empty-note" style="font-style:normal">Season series: ${m.h2hW}-${m.h2hL}${diff===null?'':` &middot; Run diff ${fmtDiff(diff)}`}</p>`;
 }
 
 // League tiebreakers between us and one opponent, in order, as things stand now.
@@ -994,7 +1054,7 @@ function openTeamModal(opponent){
   const usPct=Math.round(m.finalPct*100), themPct=100-usPct;
 
   let h=`<p class="modal-title">${esc(VORTEX)} vs ${esc(opponent)}</p>
-    <p class="modal-sub">How we stack up, based on results so far this season</p>
+    <p class="modal-sub">How we stack up, based on results so far this season${m.pastSeasons.length?' (and '+esc(m.pastSeasons[0].name)+(m.pastSeasons.length>1?' and earlier':'')+')':''}</p>
     <div class="matchup-hero">
       <div class="matchup-side">
         <div class="label">${esc(VORTEX)}</div>
@@ -1014,20 +1074,17 @@ function openTeamModal(opponent){
     </tbody></table>`;
 
   h+=`<div class="modal-section-title">Head-to-Head</div>`;
-  if(m.h2h.length===0){
-    h+=`<div class="empty-note">We haven't played ${esc(opponent)} yet this season.</div>`;
-  } else {
-    h+=`<table><thead><tr><th>Date</th><th>Score</th><th>Result</th></tr></thead><tbody>`;
-    m.h2h.forEach(g=>{
-      const usHome=g.home_team===VORTEX;
-      const usScore=usHome?g.home_score:g.away_score;
-      const themScore=usHome?g.away_score:g.home_score;
-      const winner=determineWinnerJs(g);
-      const won=winner===VORTEX;
-      const scoreTxt=(usScore!==null&&themScore!==null)?`${usScore}-${themScore}`:'(forfeit)';
-      h+=`<tr class="h2h-row"><td>${g.date_disp}</td><td>${scoreTxt}</td><td class="${won?'result-w':'result-l'}">${won?'W':'L'}</td></tr>`;
-    });
-    h+=`</tbody></table><p class="empty-note" style="font-style:normal">Season series: ${m.h2hW}-${m.h2hL}</p>`;
+  if(m.h2h.length===0) h+=`<div class="empty-note">We haven't played ${esc(opponent)} yet this season.</div>`;
+  else h+=h2hTable(m);
+  m.pastSeasons.forEach(s=>{
+    h+=`<div class="modal-section-title">Head-to-Head &middot; ${esc(s.name)}</div>`;
+    h+=s.m.h2h.length?h2hTable(s.m):`<div class="empty-note">We didn't play ${esc(opponent)} in ${esc(s.name)}.</div>`;
+  });
+  if(m.pastSeasons.length){
+    const all=[m.h2h,...m.pastSeasons.map(s=>s.m.h2h)].flat();
+    const w=all.filter(g=>determineWinnerJs(g)===VORTEX).length, l=all.filter(g=>{const x=determineWinnerJs(g); return x&&x!==VORTEX;}).length;
+    const diff=h2hRunDiff(all);
+    if(all.length) h+=`<p class="empty-note" style="font-style:normal"><b>All-time vs ${esc(opponent)}: ${w}-${l}</b>${diff===null?'':` &middot; Run diff ${fmtDiff(diff)}`}</p>`;
   }
 
   h+=`<div class="modal-section-title">Common Opponents</div>`;
@@ -1057,7 +1114,8 @@ function openTeamModal(opponent){
   });
   h+=`</tbody></table><p class="modal-formula" style="margin-top:8px">As things stand today; every level can still change while either team has games left.</p>`;
 
-  h+=`<p class="modal-formula">Estimate blends overall winning pct (Log5 method), head-to-head results this season (weight grows with games played), and records against shared opponents. More history against ${esc(opponent)} and common opponents makes the number more reliable.</p>`;
+  h+=`<p class="modal-formula">Estimate blends overall winning pct (Log5 method), head-to-head results this season (weight grows with games played), and records against shared opponents. More history against ${esc(opponent)} and common opponents makes the number more reliable.${
+    m.pastSeasons.length?` Past seasons against ${esc(opponent)} are the starting point (${Math.round(m.priorPct*100)}% from those alone) and count for less with every game we play them this season and every shared opponent: right now they're ${Math.round(m.priorShare*100)}% of the estimate.`:''}</p>`;
 
   document.getElementById('team-modal-body').innerHTML=h;
   document.getElementById('team-modal-overlay').classList.remove('hidden');
@@ -1617,7 +1675,11 @@ function saveAutoState(generated){
 async function loadAutoStats(){
   const sid=document.getElementById('auto-season-select').value;
   const url=sid?`/api/stats?season_id=${sid}`:'/api/stats';
-  _autoStats=(await fetch(url).then(r=>r.json())).filter(p=>p.active);
+  const [stats,players]=await Promise.all([fetch(url).then(r=>r.json()),fetch('/api/players').then(r=>r.json())]);
+  _autoStats=stats.filter(p=>p.active);
+  // active players with no stats yet (e.g. a new season) still get a spot, sorted to the bottom
+  const have=new Set(_autoStats.map(p=>p.player_id));
+  players.filter(p=>p.active&&!have.has(p.id)).forEach(p=>_autoStats.push({player_id:p.id,player_name:p.name,active:1}));
   renderAutoChecklist();
 }
 
@@ -2104,7 +2166,7 @@ function buildStatsPills(seasons){
 
 // ─── stat entry: season → games → lineup + stats ─────────────────────────────
 // Only 1B, 2B, 3B, HR, BB, SO, FO are typed. H, AB, PA, BA, OBP, SLG, OPS are calculated.
-// Every game saved here feeds the Stats, Players and Auto Lineup tabs.
+// Every game saved here feeds the Stats, Players and Lineup Generator tabs.
 
 const RAW_COLS = ['singles','doubles','triples','hr','bb','so','fo'];
 const RAW_LABELS= ['1B','2B','3B','HR','BB','SO','FO'];
@@ -2430,6 +2492,7 @@ function renderPlayersTable(){
       <td>${p.seasons??0}</td>
       <td><span style="color:${p.active?'var(--win)':'var(--loss)'}">${p.active?'Active':'Inactive'}</span></td>
       <td>
+        <button class="btn btn-sm rename-btn" data-pid="${p.id}">Edit Name</button>
         <button class="btn btn-sm toggle-active-btn" data-pid="${p.id}" data-active="${p.active}">
           ${p.active?'Deactivate':'Activate'}
         </button>
@@ -2466,6 +2529,22 @@ function renderPlayersTable(){
         method:'PUT',headers:{'Content-Type':'application/json'},
         body:JSON.stringify({hall_of_fame:inducted?0:1})
       });
+      await loadPlayers();
+    });
+  });
+  document.querySelectorAll('.rename-btn').forEach(btn=>{
+    btn.addEventListener('click',async(e)=>{
+      e.stopPropagation();
+      const pid=parseInt(btn.dataset.pid);
+      const old=(_players.find(x=>x.id===pid)||{}).name||'';
+      const name=(prompt('Player name:',old)||'').trim();
+      if(!name||name===old) return;
+      const res=await fetch('/api/players/'+pid,{
+        method:'PUT',headers:{'Content-Type':'application/json'},
+        body:JSON.stringify({name})
+      }).then(r=>r.json());
+      if(res.error){ alert(res.error); return; }
+      markStatsDirty();
       await loadPlayers();
     });
   });
@@ -2747,7 +2826,7 @@ async function loadHub(){
   _hot.clear();
   if(_hub) _hub.hot.forEach(h=>_hot.set(h.player_id,h));
 }
-// the flame shown after a hot hitter's name on Lineup, Auto Lineup, Stats and Players
+// the flame shown after a hot hitter's name on Lineup, Lineup Generator, Stats and Players
 function flame(pid){
   const h=_hot.get(Number(pid));
   return h?`<span class="hot-flame" title="Hot: ${esc(h.line)} over the last ${h.games} games">&#128293;</span>`:'';
@@ -3063,6 +3142,7 @@ async function loadAll(){
 let _leagueSeasons=[];
 async function initSeasonPickers(){
   _leagueSeasons=await fetch('/api/league-seasons').then(r=>r.json()).catch(()=>[]);
+  loadPastSeasons();
   const cur=_leagueSeasons.find(s=>s.current);
   _offseason=(!PUBLIC&&cur&&cur.ended)?cur:null;
   const nm=document.getElementById('enter-season-name'); if(nm) nm.textContent=cur?cur.name:'';
